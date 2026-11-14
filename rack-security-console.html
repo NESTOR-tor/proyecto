@@ -1,0 +1,2020 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RACK ORDEN Y SEGURIDAD · Master Console (NOC Telecom Edition)</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0d1117; --panel: rgba(22,27,34,.90); --panel2: rgba(31,38,48,.92); --borde: #343d49;
+    --fg: #e6edf3; --muted: #9aa7b4; --acento: #4da3ff; --u: 21px;
+    --ok: #56d364; --info: #e3b341; --pend: #ff7b72; --ej: #b392f0;
+    --marca: none;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, Arial, sans-serif; background: var(--bg); color: var(--fg); line-height: 1.45; }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: var(--marca); background-repeat: no-repeat; background-position: center;
+    background-size: min(85vw, 950px) auto; opacity: .09;
+  }
+  header, main { position: relative; z-index: 1; }
+  a.salto { position: absolute; left: -999px; top: 0; background: #fff; color: #000; padding: .5rem 1rem; }
+  a.salto:focus { left: 0; z-index: 20; }
+  header, main { max-width: 1250px; margin: 0 auto; padding: 1rem; }
+  h1 { font-size: 1.3rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1.15rem; margin: 1.75rem 0 .6rem; border-bottom: 1px solid var(--borde); padding-bottom: .3rem; }
+  h3 { font-size: 1rem; margin: .6rem 0 .25rem; }
+  .muted { color: var(--muted); font-size: .85rem; margin: .25rem 0; }
+
+  .cabecera { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.5rem; border-bottom: 1px solid var(--borde); }
+  .logo svg { display: block; height: 64px; width: auto; }
+  .cabecera .acciones { margin-left: auto; align-items: center; }
+  .operador { display: flex; align-items: center; gap: .4rem; }
+  .operador label { margin: 0; white-space: nowrap; }
+  .operador input { width: 150px; }
+
+  button { font: inherit; padding: .5rem .85rem; border: 1px solid var(--acento); background: var(--acento); color: #04121f; font-weight: 600; border-radius: 6px; cursor: pointer; }
+  button.sec { background: transparent; color: var(--acento); }
+  button.peligro { background: transparent; color: var(--pend); border-color: var(--pend); }
+  button[aria-pressed="true"] { background: var(--acento); color: #04121f; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px solid #ffbf47; outline-offset: 2px; }
+  .acciones { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; }
+  #estado { min-height: 1.5rem; font-weight: 600; margin: .5rem 0; }
+  #estado.error { color: var(--pend); }
+
+  .tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; margin: 0; padding: 0; list-style: none; }
+  .tarjetas li { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: .7rem; }
+  .tarjetas .num { font-size: 1.35rem; font-weight: 700; display: block; }
+
+  .temp { display: inline-flex; align-items: center; gap: .25rem; font-weight: 700; white-space: nowrap; }
+  .tmp-ok { color: var(--ok); } .tmp-warn { color: var(--info); } .tmp-crit { color: var(--pend); }
+  .temp-badge { background: rgba(10,14,19,.78); border-radius: 999px; padding: 0 .4rem; font-size: .68rem; flex-shrink: 0; margin-left: .3rem; }
+  .temp-badge svg { width: 12px; height: 12px; }
+  .temp-rack { font-size: .95rem; margin-right: 1rem; }
+  .temp-rack svg { width: 20px; height: 20px; }
+  @keyframes pulso { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .tmp-crit svg { animation: pulso 1s infinite; }
+  @media (prefers-reduced-motion: reduce) { .tmp-crit svg { animation: none; } }
+  .leyenda-temp { font-size: .8rem; color: var(--muted); margin: .25rem 0 .5rem; }
+  .stat-card input[type="number"] { width: 90px; padding: .25rem .4rem; }
+
+  .graficas-rack { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: .75rem; }
+  .grafica-caja { background: var(--panel); border: 1px solid var(--borde); border-radius: 6px; padding: .6rem; display: flex; flex-direction: column; gap: .35rem; }
+  .grafica-caja svg { display: block; width: 100%; height: auto; }
+  .leyenda-graf { display: flex; flex-wrap: wrap; gap: .25rem .9rem; font-size: .78rem; }
+  .leyenda-graf .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: .3rem; }
+
+  .lista-racks-acordeon { display: flex; flex-direction: column; gap: 1rem; margin-top: .75rem; }
+  .rack-acordeon-item { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; }
+  .rack-acordeon-header { padding: 1rem; background: var(--panel2); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; cursor: pointer; user-select: none; }
+  .rack-acordeon-header:hover { background: #26303e; }
+  .rack-header-der { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+  .rack-acordeon-contenido { padding: 1rem; display: none; border-top: 1px solid var(--borde); gap: 1rem; flex-direction: column; }
+  .rack-acordeon-item.abierto .rack-acordeon-contenido { display: flex; }
+
+  .rack-stats-panel { background: var(--panel2); border: 1px solid var(--borde); border-radius: 6px; padding: 0.85rem; font-size: 0.85rem; display: grid; gap: 0.75rem; }
+  .rack-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.75rem; }
+  .stat-card { background: var(--panel); border: 1px solid var(--borde); border-radius: 6px; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.35rem; }
+  .stat-row { display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap; }
+  .stat-row label { margin: 0; }
+  .stat-card button { padding: .2rem .55rem; font-size: .78rem; }
+  .barra-progreso-wrap { background: #0a0e13; border: 1px solid var(--borde); border-radius: 999px; height: 8px; overflow: hidden; width: 100%; }
+  .barra-progreso-fill { background: var(--acento); height: 100%; width: 0%; transition: width 0.3s ease; }
+  .grafica-estados { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: #0a0e13; border: 1px solid var(--borde); width: 100%; }
+  .g-seg { height: 100%; transition: width 0.3s; }
+  .g-ok { background-color: var(--ok); } .g-warn { background-color: var(--info); } .g-pend { background-color: var(--pend); }
+
+  .vista-toggle { display: flex; gap: .4rem; align-items: center; }
+  .vista-toggle button { padding: .25rem .7rem; font-size: .8rem; }
+  .rack { background: var(--panel2); border: 1px solid var(--borde); border-radius: 8px; padding: .75rem; }
+  .rack-grid { display: grid; grid-template-columns: 2.2rem 1fr; margin-top: .5rem; background: #0a0e13; border: 2px solid #4b5563; border-radius: 4px; padding: 2px; }
+  .rack-grid.posterior { border-color: #7a6a3a; }
+  .u-num { font-size: .65rem; color: var(--muted); text-align: right; padding-right: .35rem; line-height: var(--u); user-select: none; }
+  .u-slot { border-bottom: 1px dashed #2c3745; min-height: var(--u); cursor: pointer; }
+  .u-slot:hover { background: #18222e; }
+  .u-slot.drag-over-slot { background: rgba(77, 163, 255, 0.25); border-color: var(--acento); }
+
+  .equipo-icono { margin: 0; padding: 0 .45rem; border: 1px solid rgba(255,255,255,.35); border-radius: 3px; color: #fff; text-align: left; font-size: .75rem; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; display: flex; align-items: center; justify-content: space-between; z-index: 1; cursor: grab; }
+  .equipo-icono:active { cursor: grabbing; }
+  .equipo-info-izq { display: flex; align-items: center; gap: 0.4rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .led-estado { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; box-shadow: 0 0 5px currentColor; }
+  .led-ok { background-color: var(--ok); color: var(--ok); }
+  .led-warn { background-color: var(--info); color: var(--info); }
+  .led-pend { background-color: var(--pend); color: var(--pend); }
+  .equipo-icono:hover { filter: brightness(1.2); }
+  .equipo-icono.sel { outline: 3px solid #fff; outline-offset: -3px; }
+  .equipo-icono.multi { outline: 3px dashed #ffbf47; outline-offset: -3px; }
+  .t-switch { background: #1f4e8c; } .t-router { background: #1d6b4f; }
+  .t-ups { background: #8a5a14; } .t-regleta { background: #7a3a8a; } .t-otro { background: #4b5563; }
+  .t-firewall { background: #a23b3b; } .t-servidor { background: #3a5f8f; } .t-patchpanel { background: #5b6b7a; }
+  .t-odf { background: #0f7c8a; } .t-organizador { background: #3d4652; } .t-ap { background: #2e7d32; }
+  .t-pdu { background: #9a4b1a; } .t-ciego { background: #262c34; color: #9aa7b4; }
+
+  .panel-global-kit { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 1rem; margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .bandeja-global { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+  .chip-global { border: 1px solid var(--borde); border-radius: 6px; padding: .4rem .85rem; font-size: 0.82rem; display: flex; align-items: center; gap: 0.5rem; cursor: grab; color: #fff; }
+  .chip-global:active { cursor: grabbing; }
+  .zona-papelera { background: rgba(255, 123, 114, 0.08); border: 2px dashed var(--pend); border-radius: 8px; padding: 1rem; text-align: center; color: var(--pend); font-weight: 600; margin-top: 1rem; }
+  .zona-papelera.drag-over { background: rgba(255, 123, 114, 0.25); border-style: solid; }
+
+  .panel { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: .9rem; }
+  .etiqueta { display: inline-block; padding: .05rem .5rem; border-radius: 999px; font-size: .75rem; font-weight: 600; border: 1px solid currentColor; white-space: nowrap; }
+  .e-confirmado { color: var(--ok); } .e-inferencia { color: var(--info); }
+  .e-pendiente { color: var(--pend); } .e-ejemplo { color: var(--ej); }
+
+  .campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; }
+  label { display: block; font-size: .85rem; margin-bottom: .2rem; color: var(--muted); }
+  input, select { width: 100%; font: inherit; padding: .45rem .5rem; background: var(--panel2); color: var(--fg); border: 1px solid var(--borde); border-radius: 6px; }
+  details { margin: .5rem 0; }
+  summary { cursor: pointer; color: var(--acento); font-weight: 600; }
+  .error-msg { color: var(--pend); font-weight: 600; min-height: 1.4rem; margin: .5rem 0 0; }
+
+  .tabla-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; margin-top: .5rem; }
+  table { border-collapse: collapse; width: 100%; min-width: 720px; }
+  th, td { text-align: left; padding: .45rem .65rem; border-bottom: 1px solid var(--borde); vertical-align: middle; }
+  th { background: var(--panel2); }
+  td button { padding: .25rem .6rem; font-size: .82rem; }
+  td .acc { display: flex; gap: .4rem; }
+
+  .puertos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 4px; max-width: 640px; margin: .4rem 0; }
+  .puerto-btn { background: #0a0e13; color: var(--fg); padding: .2rem 0; font-size: .72rem; border-radius: 4px; border: 1px solid var(--borde); min-width: 34px; }
+  .pt-up { border-color: var(--ok); color: var(--ok); }
+  .pt-down { border-color: var(--pend); color: var(--pend); }
+  .pt-off { border-color: #6b7280; color: #6b7280; }
+  .con-cable { box-shadow: inset 0 -3px 0 var(--acento); }
+  .puerto-btn.sel { outline: 3px solid #fff; }
+  #topologia svg { background: rgba(10,14,19,.6); border: 1px solid var(--borde); border-radius: 8px; }
+
+  .solo-impresion { display: none; }
+  @media print {
+    body { background: #fff; color: #000; }
+    body::before, header, main, a.salto { display: none !important; }
+    .solo-impresion { display: block; color: #000; font-size: 11px; padding: 0; }
+    .solo-impresion h1, .solo-impresion h2 { color: #000; border: 0; margin: .8rem 0 .3rem; }
+    .solo-impresion table { min-width: 0; width: 100%; border-collapse: collapse; margin-bottom: .5rem; }
+    .solo-impresion th, .solo-impresion td { border: 1px solid #888; padding: 2px 4px; color: #000; background: #fff; font-size: 10px; }
+    .solo-impresion svg { max-height: 60px; width: auto; }
+  }
+</style>
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+
+<header class="cabecera">
+  <div id="logo" class="logo" role="img" aria-label="Logo RACK ORDEN Y SEGURIDAD"></div>
+  <div>
+    <h1>Master Console (NOC Telecom Edition)</h1>
+    <p class="muted">Versión <span id="version"></span> · Cableado, energía, temperatura, seguridad física y alertas por gabinete</p>
+  </div>
+  <div class="acciones">
+    <div class="operador"><label for="f-operador">Operador</label><input id="f-operador" type="text" maxlength="40" autocomplete="off" placeholder="Tu nombre"></div>
+    <button type="button" id="btn-undo" class="sec" disabled title="Ctrl+Z">↶ Deshacer</button>
+    <button type="button" id="btn-redo" class="sec" disabled title="Ctrl+Y">↷ Rehacer</button>
+    <button type="button" id="btn-sim" class="sec" aria-pressed="false">Simular telemetría: OFF</button>
+    <button type="button" id="btn-imprimir" class="sec">🖨️ Imprimir / PDF</button>
+  </div>
+</header>
+
+<main id="contenido">
+  <p id="estado" role="status" aria-live="polite"></p>
+
+  <section aria-labelledby="t-resumen">
+    <h2 id="t-resumen">Resumen General del Datacenter</h2>
+    <ul class="tarjetas" id="tarjetas"></ul>
+  </section>
+
+  <section aria-labelledby="t-alertas">
+    <h2 id="t-alertas">Alertas del NOC</h2>
+    <div class="acciones">
+      <select id="f-alertas-filtro" aria-label="Filtrar alertas" style="width:auto">
+        <option value="activas">Solo activas</option><option value="todas">Todas (incluye resueltas)</option>
+      </select>
+      <button type="button" id="btn-ack-todas" class="sec">Reconocer todas las activas</button>
+    </div>
+    <div class="tabla-wrap"><table>
+      <thead><tr><th scope="col">Fecha</th><th scope="col">Severidad</th><th scope="col">Origen</th><th scope="col">Mensaje</th><th scope="col">Estado</th><th scope="col">Acción</th></tr></thead>
+      <tbody id="tbody-alertas"></tbody>
+    </table></div>
+  </section>
+
+  <section aria-labelledby="t-racks">
+    <h2 id="t-racks">Gabinetes / Racks (clic para desplegar estadísticas y control U)</h2>
+    <p class="leyenda-temp">Umbrales · Entrada de rack: normal ≤ 27 °C, precaución &gt; 27 °C, crítico ≥ 32 °C · ΔT salida−entrada: precaución &gt; 15 °C, crítico ≥ 20 °C · Humedad: recomendado 40–60 %, crítico &lt; 20 % o &gt; 80 % · Equipo: normal ≤ 45 °C, precaución &gt; 45 °C, crítico ≥ 55 °C.</p>
+    <p class="leyenda-temp">Teclado: enfoca un equipo, Enter lo selecciona y ↑/↓ lo mueve 1 U. Ctrl/⌘ + clic selecciona varios equipos. Ctrl+Z / Ctrl+Y deshacen y rehacen.</p>
+
+    <div class="lista-racks-acordeon" id="lista-racks-acordeon"></div>
+
+    <div class="panel-global-kit">
+      <h3>Kit de despliegue (arrastra a una U del rack desplegado, o enfoca una pieza y pulsa Enter para instalarla en el primer hueco libre)</h3>
+      <div class="bandeja-global" id="bandeja-global"></div>
+    </div>
+
+    <div class="zona-papelera" id="zona-papelera">
+      🗑️ Arrastra aquí cualquier dispositivo desde su rack para retirarlo del sistema
+    </div>
+
+    <div class="panel" id="detalle" aria-live="polite" style="margin-top: 1rem;"></div>
+  </section>
+
+  <section aria-labelledby="t-topo">
+    <h2 id="t-topo">Topología de red (generada a partir de los cables registrados)</h2>
+    <div id="topologia"></div>
+  </section>
+
+  <section aria-labelledby="t-cables">
+    <h2 id="t-cables">Cableado estructurado (etiquetado tipo TIA-606)</h2>
+    <form id="form-cable" class="panel" novalidate>
+      <p class="muted">Registra un cable entre dos puertos libres. Cada cable recibe un ID único y una etiqueta con rack, U, equipo y puerto de ambos extremos.</p>
+      <div class="campos">
+        <div><label for="c-tipo">Tipo de cable</label><select id="c-tipo"></select></div>
+        <div><label for="c-long">Longitud (m)</label><input id="c-long" type="number" min="0.1" step="0.1" value="1" inputmode="decimal"></div>
+        <div><label for="c-color">Color</label><select id="c-color"></select></div>
+        <div><label for="c-a-eq">Extremo A · equipo</label><select id="c-a-eq"></select></div>
+        <div><label for="c-a-p">Extremo A · puerto libre</label><select id="c-a-p"></select></div>
+        <div><label for="c-b-eq">Extremo B · equipo</label><select id="c-b-eq"></select></div>
+        <div><label for="c-b-p">Extremo B · puerto libre</label><select id="c-b-p"></select></div>
+      </div>
+      <p id="cable-error" class="error-msg" role="alert"></p>
+      <div class="acciones"><button type="submit">Registrar cable</button></div>
+    </form>
+    <div class="tabla-wrap"><table>
+      <thead><tr><th scope="col">ID</th><th scope="col">Etiqueta (A ⇄ B)</th><th scope="col">Tipo</th><th scope="col">Largo</th><th scope="col">Color</th><th scope="col">Enlace</th><th scope="col">Acciones</th></tr></thead>
+      <tbody id="tbody-cables"></tbody>
+    </table></div>
+  </section>
+
+  <section aria-labelledby="t-form">
+    <h2 id="t-form">Inventario dinámico y registro de activos</h2>
+    <form id="form-equipo" class="panel" novalidate>
+      <p id="form-titulo" class="muted">Agregar dispositivo manualmente</p>
+      <div class="campos">
+        <div><label for="f-rack">Rack</label><select id="f-rack"></select></div>
+        <div><label for="f-nombre">Nombre</label><input id="f-nombre" type="text" maxlength="40" autocomplete="off"></div>
+        <div><label for="f-tipo">Tipo</label><select id="f-tipo"></select></div>
+        <div><label for="f-u">U inicial</label><input id="f-u" type="number" min="1" max="60" step="1" inputmode="numeric"></div>
+        <div><label for="f-alto">Alto en U</label><input id="f-alto" type="number" min="1" max="42" step="1" value="1" inputmode="numeric"></div>
+        <div><label for="f-w">Consumo (W)</label><input id="f-w" type="number" min="0" max="20000" step="1" value="0" inputmode="numeric"></div>
+        <div><label for="f-temp">Temperatura (°C)</label><input id="f-temp" type="number" min="-10" max="120" step="0.1" placeholder="Auto según tipo" inputmode="decimal"></div>
+        <div><label for="f-pdu">Alimentación (PDU)</label>
+          <select id="f-pdu"><option value="">Sin asignar</option><option value="A">PDU A</option><option value="B">PDU B</option><option value="A+B">A + B (redundante)</option></select></div>
+        <div><label for="f-dato">Estado operativo / LED</label>
+          <select id="f-dato">
+            <option value="CONFIRMADO">CONFIRMADO (Operativo)</option>
+            <option value="INFERENCIA POR VALIDAR">INFERENCIA (Revisión)</option>
+            <option value="PENDIENTE" selected>PENDIENTE (Sin verificar)</option>
+            <option value="EJEMPLO DIDÁCTICO">EJEMPLO DIDÁCTICO</option>
+          </select></div>
+      </div>
+      <details>
+        <summary>Datos de activo (marca, serie, red, garantía, peso)</summary>
+        <div class="campos" style="margin-top:.6rem">
+          <div><label for="f-marca">Marca</label><input id="f-marca" type="text" maxlength="40" autocomplete="off"></div>
+          <div><label for="f-modelo">Modelo</label><input id="f-modelo" type="text" maxlength="40" autocomplete="off"></div>
+          <div><label for="f-serial">Serial</label><input id="f-serial" type="text" maxlength="40" autocomplete="off"></div>
+          <div><label for="f-ip">IP de gestión</label><input id="f-ip" type="text" maxlength="15" placeholder="10.0.0.10" autocomplete="off"></div>
+          <div><label for="f-mac">MAC</label><input id="f-mac" type="text" maxlength="17" placeholder="AA:BB:CC:DD:EE:FF" autocomplete="off"></div>
+          <div><label for="f-resp">Responsable</label><input id="f-resp" type="text" maxlength="40" autocomplete="off"></div>
+          <div><label for="f-garantia">Fin de garantía</label><input id="f-garantia" type="date"></div>
+          <div><label for="f-peso">Peso (kg)</label><input id="f-peso" type="number" min="0" max="500" step="0.1" inputmode="decimal"></div>
+          <div><label for="f-prof">Profundidad (mm)</label><input id="f-prof" type="number" min="10" max="1500" step="1" value="450" inputmode="numeric"></div>
+        </div>
+      </details>
+      <p id="form-error" class="error-msg" role="alert"></p>
+      <div class="acciones">
+        <button type="submit" id="btn-guardar">Registrar dispositivo</button>
+        <button type="button" id="btn-cancelar" class="sec" hidden>Cancelar edición</button>
+      </div>
+    </form>
+
+    <div style="margin-top:.75rem">
+      <label for="f-filtro">Buscar en el inventario</label>
+      <input id="f-filtro" type="search" placeholder="Nombre, tipo, rack, marca, serial o IP" autocomplete="off">
+    </div>
+    <div class="tabla-wrap">
+      <table>
+        <thead><tr>
+          <th scope="col">Rack</th><th scope="col">Dispositivo</th><th scope="col">Tipo</th>
+          <th scope="col">U</th><th scope="col">Alto</th><th scope="col">W</th><th scope="col">PDU</th>
+          <th scope="col">Temp.</th><th scope="col">Puertos</th><th scope="col">Estado / LED</th><th scope="col">Acciones</th>
+        </tr></thead>
+        <tbody id="tbody-inv"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-vivo">
+    <h2 id="t-vivo">Telemetría en vivo (datos reales)</h2>
+    <div class="panel">
+      <p class="muted">Conecta un gateway que publique JSON por WebSocket (por ejemplo, un puente SNMP o MQTT hacia WebSocket), o pega una lectura manualmente. El navegador no habla SNMP directamente.</p>
+      <div class="campos">
+        <div><label for="t-url">URL WebSocket</label><input id="t-url" type="text" placeholder="ws://localhost:8080/telemetria" autocomplete="off"></div>
+      </div>
+      <div class="acciones">
+        <button type="button" id="btn-ws-conectar">Conectar</button>
+        <button type="button" id="btn-ws-desconectar" class="sec">Desconectar</button>
+      </div>
+      <p id="ws-estado" class="muted">Desconectado.</p>
+      <label for="t-json">Lectura JSON manual</label>
+      <textarea id="t-json" rows="3" style="width:100%;font:inherit;background:var(--panel2);color:var(--fg);border:1px solid var(--borde);border-radius:6px;padding:.45rem" placeholder='{"rack":"Rack 1","tempEntrada":24.5,"tempSalida":35,"humedad":48}'></textarea>
+      <div class="acciones"><button type="button" id="btn-json-aplicar" class="sec">Aplicar lectura</button></div>
+      <details>
+        <summary>Formato de los mensajes</summary>
+        <pre class="muted" style="white-space:pre-wrap">Lectura de rack (rack = id o nombre):
+{"rack":"Rack 1","tempEntrada":24.5,"tempSalida":35,"humedad":48,"puerta":"cerrada","humo":"OK","agua":"OK"}
+
+Lectura de equipo:
+{"rack":"Rack 1","equipo":"Switch 1","tempC":41,"cargaPct":55,"bateriaPct":90,"puertos":{"1":"up","2":"down"}}
+
+También se acepta un arreglo de lecturas. Se ignoran los campos fuera de rango.</pre>
+      </details>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-bit">
+    <h2 id="t-bit">Bitácora de Eventos del NOC</h2>
+    <form id="form-nota" class="panel" novalidate>
+      <label for="f-nota">Agregar nota manual a bitácora</label>
+      <div class="acciones">
+        <input id="f-nota" type="text" maxlength="200" autocomplete="off" style="flex:1;min-width:200px">
+        <button type="submit">Agregar nota</button>
+      </div>
+    </form>
+    <div class="campos" style="margin-top:.6rem">
+      <div><label for="f-bit-texto">Filtrar por texto</label><input id="f-bit-texto" type="search" autocomplete="off"></div>
+      <div><label for="f-bit-accion">Filtrar por acción</label><select id="f-bit-accion"></select></div>
+    </div>
+    <div class="tabla-wrap">
+      <table>
+        <thead><tr><th scope="col">Fecha / Hora</th><th scope="col">Usuario</th><th scope="col">Acción</th><th scope="col">Detalle de Auditoría</th></tr></thead>
+        <tbody id="tbody-bit"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-datos">
+    <h2 id="t-datos">Gestión de Datos</h2>
+    <div class="acciones">
+      <button type="button" id="btn-exp-json">⬇ Exportar JSON (respaldo completo)</button>
+      <button type="button" id="btn-imp-json" class="sec">⬆ Importar JSON</button>
+      <input type="file" id="f-import" accept="application/json,.json" hidden>
+    </div>
+    <div class="acciones">
+      <button type="button" id="btn-csv-inv" class="sec">CSV inventario</button>
+      <button type="button" id="btn-csv-cab" class="sec">CSV cables</button>
+      <button type="button" id="btn-csv-bit" class="sec">CSV bitácora</button>
+      <button type="button" id="btn-csv-ale" class="sec">CSV alertas</button>
+      <button type="button" id="btn-csv-his" class="sec">CSV historial de lecturas</button>
+    </div>
+    <div class="acciones">
+      <button type="button" id="btn-ejemplo" class="sec">Cargar laboratorio de ejemplo</button>
+      <button type="button" id="btn-pruebas" class="sec">Ejecutar autopruebas</button>
+      <button type="button" id="btn-hist" class="sec">Limpiar historial de lecturas</button>
+      <button type="button" id="btn-inicial" class="sec">Restablecer base de datos</button>
+      <button type="button" id="btn-vaciar" class="peligro">Purgar todos los racks</button>
+    </div>
+    <div id="resultado-pruebas" class="panel" hidden></div>
+  </section>
+</main>
+
+<div id="reporte" class="solo-impresion" aria-hidden="true"></div>
+
+<script>
+"use strict";
+
+const APP_VERSION = "2.0.0";
+const SCHEMA_VERSION = 2;
+const STORAGE_KEY = "consola-racks.v2";
+const MAX_BITACORA = 500;
+const MAX_ALERTAS = 300;
+
+const ESTADOS = {
+  "CONFIRMADO": "e-confirmado",
+  "INFERENCIA POR VALIDAR": "e-inferencia",
+  "PENDIENTE": "e-pendiente",
+  "EJEMPLO DIDÁCTICO": "e-ejemplo"
+};
+const COLECCIONES = ["racks", "equipos", "interfaces", "servicios", "reservas", "fuentes", "pdus", "circuitos", "alertas", "bitacora"];
+
+/* ---------- Catálogo de tipos de equipo ---------- */
+const TIPOS_DEF = {
+  switch:      { nombre: "Switch",               alto: 1, w: 120, temp: 38, carga: 35, kg: 5,   puertos: 24, vel: "1G"  },
+  router:      { nombre: "Router",               alto: 1, w: 90,  temp: 40, carga: 45, kg: 4,   puertos: 4,  vel: "1G"  },
+  firewall:    { nombre: "Firewall",             alto: 1, w: 100, temp: 41, carga: 40, kg: 6,   puertos: 6,  vel: "1G"  },
+  servidor:    { nombre: "Servidor",             alto: 2, w: 350, temp: 45, carga: 50, kg: 20,  puertos: 2,  vel: "10G" },
+  patchpanel:  { nombre: "Patch panel",          alto: 1, w: 0,   temp: 26, carga: 0,  kg: 2,   puertos: 24, vel: "1G"  },
+  odf:         { nombre: "ODF de fibra",         alto: 1, w: 0,   temp: 26, carga: 0,  kg: 3,   puertos: 12, vel: "10G" },
+  organizador: { nombre: "Organizador de cable", alto: 1, w: 0,   temp: 26, carga: 0,  kg: 1,   puertos: 0,  vel: "1G"  },
+  ap:          { nombre: "Access point",         alto: 1, w: 15,  temp: 35, carga: 30, kg: 1,   puertos: 1,  vel: "1G"  },
+  pdu:         { nombre: "PDU",                  alto: 1, w: 20,  temp: 30, carga: 0,  kg: 3,   puertos: 0,  vel: "1G"  },
+  ups:         { nombre: "UPS",                  alto: 2, w: 60,  temp: 33, carga: 50, kg: 25,  puertos: 0,  vel: "1G"  },
+  regleta:     { nombre: "Regleta de corriente", alto: 1, w: 0,   temp: 28, carga: 0,  kg: 1,   puertos: 0,  vel: "1G"  },
+  ciego:       { nombre: "Panel ciego",          alto: 1, w: 0,   temp: 25, carga: 0,  kg: 0.5, puertos: 0,  vel: "1G"  },
+  otro:        { nombre: "Otro equipo",          alto: 1, w: 0,   temp: 30, carga: 30, kg: 3,   puertos: 0,  vel: "1G"  }
+};
+const KIT = Object.keys(TIPOS_DEF).filter(t => t !== "otro");
+const COLORES_TIPO = { switch: "#1f4e8c", router: "#1d6b4f", firewall: "#a23b3b", servidor: "#3a5f8f", patchpanel: "#5b6b7a", odf: "#0f7c8a", organizador: "#3d4652", ap: "#2e7d32", pdu: "#9a4b1a", ups: "#8a5a14", regleta: "#7a3a8a", ciego: "#262c34", otro: "#4b5563" };
+function def(tipo) { return Object.prototype.hasOwnProperty.call(TIPOS_DEF, tipo) ? TIPOS_DEF[tipo] : TIPOS_DEF.otro; }
+
+const CABLES = {
+  cat5e: { nombre: "Cat5e",        maxM: 100 },
+  cat6:  { nombre: "Cat6",         maxM: 100 },
+  cat6a: { nombre: "Cat6A",        maxM: 100 },
+  cat7:  { nombre: "Cat7",         maxM: 100 },
+  om3:   { nombre: "Fibra OM3",    maxM: 300 },
+  om4:   { nombre: "Fibra OM4",    maxM: 400 },
+  os2:   { nombre: "Fibra OS2",    maxM: 10000 },
+  dac:   { nombre: "DAC / Twinax", maxM: 7 },
+  coax:  { nombre: "Coaxial",      maxM: 500 }
+};
+const COLORES_CABLE = { azul: "#4da3ff", rojo: "#ff7b72", verde: "#56d364", amarillo: "#e3b341", naranja: "#ff9f43", gris: "#9aa7b4", blanco: "#e6edf3", negro: "#6e7681", violeta: "#b392f0", aqua: "#39d0d0" };
+const VELOCIDADES = ["10M", "100M", "1G", "2.5G", "5G", "10G", "25G", "40G", "100G"];
+const ESTADOS_PUERTO = ["up", "down", "deshabilitado"];
+
+/* ---------- Umbrales ---------- */
+const TEMP_AMBIENTE = 22;
+const UMBRAL_RACK = { warn: 27, crit: 32 };
+const UMBRAL_EQUIPO = { warn: 45, crit: 55 };
+const TEMP_MIN = -10, TEMP_MAX = 120;
+const BTU_POR_W = 3.412;
+const CAPACIDAD_RACK_W = 3000;
+const MAX_HIST = 120;
+const MUESTREO_MS = 5000;
+const BARRAS_MAX = 20;
+const NOMBRE_NIVEL = { ok: "normal", warn: "precaución", crit: "CRÍTICA" };
+
+/* ---------- Logo ---------- */
+const LOGO_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 120">' +
+  '<path d="M50 6 L92 21 V55 C92 82 74 101 50 114 C26 101 8 82 8 55 V21 Z" fill="#0d1117" stroke="#4da3ff" stroke-width="5" stroke-linejoin="round"/>' +
+  '<rect x="26" y="32" width="48" height="12" rx="2" fill="none" stroke="#e6edf3" stroke-width="3"/>' +
+  '<rect x="26" y="51" width="48" height="12" rx="2" fill="none" stroke="#e6edf3" stroke-width="3"/>' +
+  '<rect x="26" y="70" width="48" height="12" rx="2" fill="none" stroke="#e6edf3" stroke-width="3"/>' +
+  '<circle cx="66" cy="38" r="2.6" fill="#56d364"/><circle cx="66" cy="57" r="2.6" fill="#56d364"/><circle cx="66" cy="76" r="2.6" fill="#e3b341"/>' +
+  '<path d="M38 95 L47 103 L64 88" fill="none" stroke="#4da3ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>' +
+  '<text x="120" y="52" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="900" fill="#e6edf3" textLength="300" lengthAdjust="spacingAndGlyphs">RACK ORDEN</text>' +
+  '<text x="120" y="98" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="900" fill="#4da3ff" textLength="300" lengthAdjust="spacingAndGlyphs">Y SEGURIDAD</text>' +
+  '</svg>';
+const LOGO_IMPRESION = LOGO_SVG.split("#e6edf3").join("#111111").split("#0d1117").join("#ffffff");
+
+/* ---------- Utilidades ---------- */
+const $ = id => document.getElementById(id);
+function ahoraISO() { return new Date().toISOString(); }
+function uid(p) { return p + "-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function round1(v) { return Math.round(v * 10) / 10; }
+function numOr(v, d) { return typeof v === "number" && isFinite(v) ? v : d; }
+function el(tag, texto, clase) {
+  const n = document.createElement(tag);
+  if (texto !== undefined && texto !== null && texto !== "") n.textContent = String(texto);
+  if (clase) n.className = clase;
+  return n;
+}
+function svgEl(tag, attrs, texto) {
+  const n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  Object.keys(attrs || {}).forEach(k => n.setAttribute(k, String(attrs[k])));
+  if (texto !== undefined) n.textContent = String(texto);
+  return n;
+}
+function etiquetaEstado(estado) {
+  const ok = Object.prototype.hasOwnProperty.call(ESTADOS, estado);
+  return el("span", "[" + (ok ? estado : "PENDIENTE") + "]", "etiqueta " + (ok ? ESTADOS[estado] : "e-pendiente"));
+}
+function insignia(texto, nivel) {
+  return el("span", texto, "etiqueta " + (nivel === "ok" ? "e-confirmado" : (nivel === "warn" ? "e-inferencia" : (nivel === "ej" ? "e-ejemplo" : "e-pendiente"))));
+}
+function insigniaSev(sev) { return insignia(sev === "crit" ? "CRÍTICA" : (sev === "warn" ? "ADVERTENCIA" : "INFO"), sev === "info" ? "ej" : sev); }
+function mensaje(texto, error) { const p = $("estado"); p.textContent = texto; p.className = error ? "error" : ""; }
+function txtNum(v, d) { return Number(v).toFixed(d === undefined ? 1 : d); }
+
+/* ---------- Temperatura / humedad ---------- */
+function tempBase(tipo) { return def(tipo).temp; }
+function cargaBase(tipo) { return def(tipo).carga; }
+function nivelTemp(t, esRack) {
+  const u = esRack ? UMBRAL_RACK : UMBRAL_EQUIPO;
+  if (t >= u.crit) return "crit";
+  if (t > u.warn) return "warn";
+  return "ok";
+}
+function nivelDelta(d) { return d >= 20 ? "crit" : ((d > 15 || d < 0) ? "warn" : "ok"); }
+function nivelHumedad(h) { return (h < 20 || h > 80) ? "crit" : ((h < 40 || h > 60) ? "warn" : "ok"); }
+function fmtTemp(t, d) { return txtNum(t, d === undefined ? 1 : d) + " °C"; }
+function tempValida(v) { return typeof v === "number" && isFinite(v) && v >= TEMP_MIN && v <= TEMP_MAX; }
+
+function iconoTemp(t, esRack, claseExtra) {
+  const n = nivelTemp(t, esRack);
+  const s = el("span", "", "temp tmp-" + n + (claseExtra ? " " + claseExtra : ""));
+  const y = n === "crit" ? 7 : (n === "warn" ? 10 : 13);
+  s.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">' +
+    '<path d="M14 14.76V5a2 2 0 0 0-4 0v9.76a4 4 0 1 0 4 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
+    '<circle cx="12" cy="17" r="2.2" fill="currentColor"/>' +
+    '<line x1="12" y1="17" x2="12" y2="' + y + '" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  s.append(document.createTextNode(esRack ? fmtTemp(t, 1) : Math.round(t) + "°"));
+  s.title = (esRack ? "Temperatura de entrada del rack: " : "Temperatura del equipo: ") + fmtTemp(t, 1) + " (" + NOMBRE_NIVEL[n] + ")";
+  s.setAttribute("aria-label", s.title);
+  return s;
+}
+
+/* ---------- Modelo de datos ---------- */
+function nuevoRack(i) {
+  return { id: "rack-" + i, nombre: "Rack " + i, ubicacion: "Datacenter Principal", alturaU: 42, orientacionU: "1 abajo", notas: "", estado: "CONFIRMADO",
+    tempC: TEMP_AMBIENTE, tempSalidaC: 32, humedadPct: 50, puerta: "cerrada", humo: "OK", agua: "OK", profMm: 1000, cargaMaxKg: 1000, capacidadW: CAPACIDAD_RACK_W };
+}
+
+function estadoInicial() {
+  const d = { meta: { schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION, creado: ahoraISO(), modificado: ahoraISO(), operador: "", contadorCable: 0 } };
+  COLECCIONES.forEach(c => d[c] = []);
+  d.historial = {};
+  for (let i = 1; i <= 3; i++) d.racks.push(nuevoRack(i));
+  d.bitacora.push({ id: uid("bt"), fecha: ahoraISO(), accion: "inicio", entidadRef: "", detalle: "Datacenter inicializado", usuario: "", appVersion: APP_VERSION });
+  return d;
+}
+
+function datosValidos(d) {
+  if (!d || typeof d !== "object" || !d.meta || d.meta.schemaVersion !== SCHEMA_VERSION) return false;
+  return COLECCIONES.every(c => Array.isArray(d[c]));
+}
+
+function estructuraOk(d) {
+  try {
+    if (!datosValidos(d)) return false;
+    const ids = new Set();
+    for (const r of d.racks) {
+      if (!r || typeof r.id !== "string" || typeof r.nombre !== "string" || !(r.alturaU >= 1 && r.alturaU <= 60) || ids.has(r.id)) return false;
+      ids.add(r.id);
+    }
+    const eids = new Set();
+    for (const e of d.equipos) {
+      if (!e || typeof e.id !== "string" || eids.has(e.id) || !ids.has(e.rackId) || typeof e.nombre !== "string" || typeof e.tipo !== "string" ||
+          !Number.isInteger(e.uInicio) || !Number.isInteger(e.alturaU) || e.alturaU < 1 || e.uInicio < 1 || !(e.consumoW >= 0)) return false;
+      eids.add(e.id);
+    }
+    return true;
+  } catch (err) { return false; }
+}
+
+function crearPuertos(tipo) {
+  const df = def(tipo), arr = [];
+  for (let i = 1; i <= df.puertos; i++) arr.push({ n: i, estado: "down", vel: df.vel, vlan: 1, poe: false, cableId: "", nota: "" });
+  return arr;
+}
+
+function sanearCables(d) {
+  const porId = new Map(d.equipos.map(e => [e.id, e]));
+  d.equipos.forEach(e => e.puertos.forEach(p => { p.cableId = ""; }));
+  const vistos = new Set();
+  d.circuitos = d.circuitos.filter(c => {
+    if (!c || typeof c.id !== "string" || vistos.has(c.id) || !Object.prototype.hasOwnProperty.call(CABLES, c.tipo) || !(c.longitudM > 0)) return false;
+    const A = porId.get(c.aEq), B = porId.get(c.bEq);
+    if (!A || !B) return false;
+    const pa = A.puertos.find(p => p.n === c.aP), pb = B.puertos.find(p => p.n === c.bP);
+    if (!pa || !pb || pa === pb || pa.cableId || pb.cableId) return false;
+    pa.cableId = c.id; pb.cableId = c.id; vistos.add(c.id);
+    if (typeof c.color !== "string" || !Object.prototype.hasOwnProperty.call(COLORES_CABLE, c.color)) c.color = "gris";
+    return true;
+  });
+}
+
+function normalizar(d) {
+  d.meta.operador = typeof d.meta.operador === "string" ? d.meta.operador.slice(0, 40) : "";
+  d.meta.contadorCable = numOr(d.meta.contadorCable, 0);
+  const base = nuevoRack(0);
+  d.racks.forEach(r => {
+    ["tempC", "tempSalidaC", "humedadPct", "profMm", "cargaMaxKg", "capacidadW"].forEach(k => { r[k] = numOr(r[k], base[k]); });
+    r.puerta = r.puerta === "abierta" ? "abierta" : "cerrada";
+    r.humo = r.humo === "ALARMA" ? "ALARMA" : "OK";
+    r.agua = r.agua === "ALARMA" ? "ALARMA" : "OK";
+  });
+  d.equipos.forEach(e => {
+    if (e.tipo === "UPS") e.tipo = "ups";
+    const df = def(e.tipo);
+    e.tempC = numOr(e.tempC, df.temp); e.cargaPct = numOr(e.cargaPct, df.carga);
+    e.pesoKg = numOr(e.pesoKg, df.kg); e.profMm = numOr(e.profMm, 450);
+    ["marca", "modelo", "serial", "ip", "mac", "responsable", "garantia"].forEach(k => { if (typeof e[k] !== "string") e[k] = ""; });
+    if (["", "A", "B", "A+B"].indexOf(e.pdu) < 0) e.pdu = "";
+    if (e.tipo === "ups") { e.capacidadW = numOr(e.capacidadW, 1500); e.bateriaPct = numOr(e.bateriaPct, 100); }
+    if (!Array.isArray(e.puertos)) e.puertos = crearPuertos(e.tipo);
+    const vistos = new Set();
+    e.puertos = e.puertos.filter(p => {
+      if (!p || !Number.isInteger(p.n) || p.n < 1 || p.n > 96 || vistos.has(p.n)) return false;
+      vistos.add(p.n); return true;
+    }).map(p => ({
+      n: p.n, estado: ESTADOS_PUERTO.indexOf(p.estado) >= 0 ? p.estado : "down",
+      vel: typeof p.vel === "string" ? p.vel.slice(0, 8) : "1G",
+      vlan: Number.isInteger(p.vlan) && p.vlan >= 1 && p.vlan <= 4094 ? p.vlan : 1,
+      poe: !!p.poe, cableId: "", nota: typeof p.nota === "string" ? p.nota.slice(0, 80) : ""
+    }));
+  });
+  sanearCables(d);
+  d.meta.contadorCable = d.circuitos.reduce((m, c) => { const n = parseInt(String(c.id).replace(/\D/g, ""), 10); return isFinite(n) ? Math.max(m, n) : m; }, d.meta.contadorCable);
+  d.alertas = d.alertas.filter(a => a && typeof a.id === "string" && typeof a.clave === "string" && typeof a.msg === "string").map(a => ({
+    id: a.id, fecha: isNaN(Date.parse(a.fecha)) ? ahoraISO() : a.fecha, clave: a.clave,
+    sev: ["crit", "warn", "info"].indexOf(a.sev) >= 0 ? a.sev : "info", origen: String(a.origen || ""), msg: a.msg,
+    ack: !!a.ack, ackPor: String(a.ackPor || ""), ackFecha: String(a.ackFecha || ""), resuelta: !!a.resuelta, fechaResuelta: String(a.fechaResuelta || "")
+  })).slice(-MAX_ALERTAS);
+  d.bitacora = d.bitacora.filter(b => b && typeof b === "object").map(b => ({
+    id: String(b.id || uid("bt")), fecha: isNaN(Date.parse(b.fecha)) ? ahoraISO() : b.fecha, accion: String(b.accion || ""),
+    entidadRef: String(b.entidadRef || ""), detalle: String(b.detalle || ""), usuario: typeof b.usuario === "string" ? b.usuario : "", appVersion: String(b.appVersion || "")
+  })).slice(-MAX_BITACORA);
+  if (!d.historial || typeof d.historial !== "object" || Array.isArray(d.historial)) d.historial = {};
+  Object.keys(d.historial).forEach(k => {
+    const a = d.historial[k];
+    d.historial[k] = Array.isArray(a) ? a.filter(p => p && typeof p.t === "number" && isFinite(p.t)).slice(-MAX_HIST) : [];
+  });
+  return d;
+}
+
+let datos;
+let seleccionId = null;
+let seleccionMulti = new Set();
+let selPuerto = null;
+let arrastreInfo = null;
+let rastroAbiertos = new Set();
+let vistaRack = {};
+let editandoId = null;
+let refocoId = null;
+let simTimer = null;
+let ws = null;
+let undoStack = [], redoStack = [];
+
+function cargar() {
+  try {
+    const crudo = localStorage.getItem(STORAGE_KEY);
+    if (crudo === null) return estadoInicial();
+    const parsed = JSON.parse(crudo);
+    if (datosValidos(parsed) && estructuraOk(parsed)) return normalizar(parsed);
+  } catch (e) {}
+  return estadoInicial();
+}
+
+function guardar() {
+  datos.meta.modificado = ahoraISO();
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(datos)); return true; }
+  catch (e) { mensaje("⚠ No se pudo guardar en el navegador (almacenamiento lleno o bloqueado). Exporta un respaldo JSON.", true); return false; }
+}
+
+function bitacora(accion, ref, detalle) {
+  datos.bitacora.push({ id: uid("bt"), fecha: ahoraISO(), accion: accion, entidadRef: ref || "", detalle: detalle || "", usuario: datos.meta.operador || "", appVersion: APP_VERSION });
+  if (datos.bitacora.length > MAX_BITACORA) datos.bitacora.shift();
+}
+
+/* ---------- Deshacer / rehacer (no revierte bitácora, alertas ni historial) ---------- */
+function instantanea() {
+  const { historial: _h, bitacora: _b, alertas: _a, ...resto } = datos;
+  return JSON.stringify(resto);
+}
+function registrarSnap(s) { undoStack.push(s); if (undoStack.length > 40) undoStack.shift(); redoStack = []; botonesUndo(); }
+function restaurar(s) {
+  const nuevo = JSON.parse(s);
+  nuevo.historial = datos.historial; nuevo.bitacora = datos.bitacora; nuevo.alertas = datos.alertas;
+  datos = normalizar(nuevo);
+  if (seleccionId && !equipoPorId(seleccionId)) seleccionId = null;
+  seleccionMulti = new Set([...seleccionMulti].filter(id => equipoPorId(id)));
+  selPuerto = null; editandoId = null;
+  revisarAlertas(); guardar(); render(); botonesUndo();
+}
+function deshacer() {
+  if (!undoStack.length) return;
+  redoStack.push(instantanea()); restaurar(undoStack.pop());
+  bitacora("deshacer", "", "Se deshizo la última acción"); guardar(); render(); mensaje("Acción deshecha.", false);
+}
+function rehacer() {
+  if (!redoStack.length) return;
+  undoStack.push(instantanea()); restaurar(redoStack.pop());
+  bitacora("rehacer", "", "Se rehizo una acción"); guardar(); render(); mensaje("Acción rehecha.", false);
+}
+function botonesUndo() { $("btn-undo").disabled = !undoStack.length; $("btn-redo").disabled = !redoStack.length; }
+
+/* ---------- Consultas ---------- */
+function rackPorId(id) { return datos.racks.find(r => r.id === id); }
+function equipoPorId(id) { return datos.equipos.find(e => e.id === id); }
+function cablePorId(id) { return datos.circuitos.find(c => c.id === id); }
+function puerto(e, n) { return e && e.puertos ? e.puertos.find(p => p.n === n) : undefined; }
+function topeU(e) { return e.uInicio + e.alturaU - 1; }
+
+function unidadesOcupadas(rack) {
+  const set = new Set();
+  datos.equipos.forEach(r => {
+    if (r.rackId !== rack.id) return;
+    for (let u = r.uInicio; u < r.uInicio + r.alturaU; u++) if (u >= 1 && u <= rack.alturaU) set.add(u);
+  });
+  return set.size;
+}
+function potenciaEquipo(e) { return e.consumoW * (0.6 + 0.4 * (e.cargaPct / 100)); }
+function potenciaRack(rack) { return datos.equipos.filter(e => e.rackId === rack.id).reduce((s, e) => s + potenciaEquipo(e), 0); }
+function pesoRack(rack) { return datos.equipos.filter(e => e.rackId === rack.id).reduce((s, e) => s + e.pesoKg, 0); }
+function repartoPDU(rack) {
+  const r = { A: 0, B: 0, sin: 0, sinN: 0 };
+  datos.equipos.filter(e => e.rackId === rack.id).forEach(e => {
+    const p = potenciaEquipo(e);
+    if (e.pdu === "A") r.A += p; else if (e.pdu === "B") r.B += p;
+    else if (e.pdu === "A+B") { r.A += p / 2; r.B += p / 2; }
+    else if (p > 0 && e.tipo !== "pdu" && e.tipo !== "ups") { r.sin += p; r.sinN++; }
+  });
+  return r;
+}
+function autonomiaUPS(rack) {
+  const ups = datos.equipos.find(e => e.rackId === rack.id && e.tipo === "ups");
+  if (!ups) return null;
+  const pot = potenciaRack(rack), cap = ups.capacidadW || 1500;
+  return { ups: ups, cargaPct: pot / cap * 100, minutos: Math.min(240, ups.bateriaPct / 100 * 12 * (cap / Math.max(pot, 1))) };
+}
+function puertosTotales() {
+  let usados = 0, total = 0;
+  datos.equipos.forEach(e => e.puertos.forEach(p => { total++; if (p.cableId) usados++; }));
+  return { usados: usados, total: total };
+}
+
+/* ---------- Cables ---------- */
+function etiquetaCable(c) {
+  const A = equipoPorId(c.aEq), B = equipoPorId(c.bEq);
+  if (!A || !B) return "(extremo eliminado)";
+  const rA = rackPorId(A.rackId), rB = rackPorId(B.rackId);
+  return (rA ? rA.nombre : "?") + " U" + A.uInicio + " " + A.nombre + " P" + c.aP + " ⇄ " + (rB ? rB.nombre : "?") + " U" + B.uInicio + " " + B.nombre + " P" + c.bP;
+}
+function estadoEnlace(c) {
+  const pa = puerto(equipoPorId(c.aEq), c.aP), pb = puerto(equipoPorId(c.bEq), c.bP);
+  return pa && pb && pa.estado === "up" && pb.estado === "up" ? "UP" : "DOWN";
+}
+function validarCable(c) {
+  const cab = CABLES[c.tipo];
+  if (!cab) return "Tipo de cable no válido.";
+  if (!(typeof c.longitudM === "number" && isFinite(c.longitudM) && c.longitudM > 0)) return "La longitud debe ser mayor que 0 m.";
+  if (c.longitudM > cab.maxM) return "El cable " + cab.nombre + " no debe superar " + cab.maxM + " m (indicaste " + c.longitudM + " m).";
+  const A = equipoPorId(c.aEq), B = equipoPorId(c.bEq);
+  if (!A || !B) return "Selecciona los dos equipos.";
+  const pa = puerto(A, c.aP), pb = puerto(B, c.bP);
+  if (!pa || !pb) return "Selecciona los dos puertos.";
+  if (A.id === B.id && c.aP === c.bP) return "Los dos extremos no pueden ser el mismo puerto.";
+  if (pa.cableId) return "El puerto " + c.aP + " de «" + A.nombre + "» ya tiene un cable (" + pa.cableId + ").";
+  if (pb.cableId) return "El puerto " + c.bP + " de «" + B.nombre + "» ya tiene un cable (" + pb.cableId + ").";
+  return null;
+}
+function conectarCable(c) {
+  datos.meta.contadorCable++;
+  c.id = "C-" + String(datos.meta.contadorCable).padStart(4, "0");
+  const pa = puerto(equipoPorId(c.aEq), c.aP), pb = puerto(equipoPorId(c.bEq), c.bP);
+  pa.cableId = c.id; pb.cableId = c.id;
+  if (pa.estado !== "deshabilitado") pa.estado = "up";
+  if (pb.estado !== "deshabilitado") pb.estado = "up";
+  datos.circuitos.push(c);
+  bitacora("cable", c.id, "Cable " + c.id + " (" + CABLES[c.tipo].nombre + ", " + c.longitudM + " m): " + etiquetaCable(c));
+  return c;
+}
+function liberarCable(c) {
+  [[c.aEq, c.aP], [c.bEq, c.bP]].forEach(x => {
+    const p = puerto(equipoPorId(x[0]), x[1]);
+    if (p) { p.cableId = ""; if (p.estado === "up") p.estado = "down"; }
+  });
+  datos.circuitos = datos.circuitos.filter(x => x.id !== c.id);
+}
+function quitarCable(id) {
+  const c = cablePorId(id); if (!c) return;
+  const s = instantanea(), et = etiquetaCable(c);
+  liberarCable(c); registrarSnap(s);
+  bitacora("cable", id, "Cable " + id + " desconectado: " + et);
+  revisarAlertas(); guardar(); render(); mensaje("Cable " + id + " eliminado.", false);
+}
+
+/* ---------- Alertas ---------- */
+function condiciones() {
+  const c = [];
+  const hoy = new Date().toISOString().slice(0, 10);
+  datos.racks.forEach(r => {
+    const nt = nivelTemp(r.tempC, true);
+    if (nt !== "ok") c.push({ clave: "tr:" + r.id, sev: nt, origen: r.nombre, msg: r.nombre + ": temperatura de entrada " + fmtTemp(r.tempC) + " (" + NOMBRE_NIVEL[nt] + ")" });
+    const dT = r.tempSalidaC - r.tempC, nd = nivelDelta(dT);
+    if (nd !== "ok") c.push({ clave: "dt:" + r.id, sev: nd, origen: r.nombre, msg: r.nombre + ": ΔT salida−entrada de " + txtNum(dT) + " °C fuera de rango" });
+    const nh = nivelHumedad(r.humedadPct);
+    if (nh !== "ok") c.push({ clave: "hu:" + r.id, sev: nh, origen: r.nombre, msg: r.nombre + ": humedad relativa " + txtNum(r.humedadPct) + " %" });
+    if (r.puerta === "abierta") c.push({ clave: "pu:" + r.id, sev: "warn", origen: r.nombre, msg: r.nombre + ": puerta del rack abierta" });
+    if (r.humo === "ALARMA") c.push({ clave: "hm:" + r.id, sev: "crit", origen: r.nombre, msg: r.nombre + ": ALARMA de humo" });
+    if (r.agua === "ALARMA") c.push({ clave: "ag:" + r.id, sev: "crit", origen: r.nombre, msg: r.nombre + ": ALARMA de agua" });
+    const kg = pesoRack(r);
+    if (kg > r.cargaMaxKg) c.push({ clave: "kg:" + r.id, sev: "crit", origen: r.nombre, msg: r.nombre + ": peso " + txtNum(kg) + " kg supera el máximo de " + r.cargaMaxKg + " kg" });
+    else if (kg > r.cargaMaxKg * 0.9) c.push({ clave: "kg:" + r.id, sev: "warn", origen: r.nombre, msg: r.nombre + ": peso al " + Math.round(kg / r.cargaMaxKg * 100) + " % de la capacidad" });
+    const pw = potenciaRack(r), cap = r.capacidadW || CAPACIDAD_RACK_W;
+    if (pw > cap) c.push({ clave: "pw:" + r.id, sev: "crit", origen: r.nombre, msg: r.nombre + ": potencia " + Math.round(pw) + " W supera la capacidad de " + cap + " W" });
+    else if (pw > cap * 0.8) c.push({ clave: "pw:" + r.id, sev: "warn", origen: r.nombre, msg: r.nombre + ": potencia al " + Math.round(pw / cap * 100) + " % de la capacidad" });
+    const rep = repartoPDU(r);
+    if (rep.A > 0 && rep.B > 0 && Math.max(rep.A, rep.B) > cap / 2 * 1.0 && (rep.A + rep.B) > 0 && false) { /* reservado */ }
+    const au = autonomiaUPS(r);
+    if (au) {
+      const bat = au.ups.bateriaPct;
+      if (bat < 15 || au.minutos < 5) c.push({ clave: "up:" + au.ups.id, sev: "crit", origen: au.ups.nombre, msg: r.nombre + " · " + au.ups.nombre + ": batería " + Math.round(bat) + " %, autonomía ~" + Math.round(au.minutos) + " min" });
+      else if (bat < 30 || au.minutos < 10 || au.cargaPct > 80) c.push({ clave: "up:" + au.ups.id, sev: "warn", origen: au.ups.nombre, msg: r.nombre + " · " + au.ups.nombre + ": batería " + Math.round(bat) + " %, carga " + Math.round(au.cargaPct) + " %, autonomía ~" + Math.round(au.minutos) + " min" });
+    }
+  });
+  datos.equipos.forEach(e => {
+    const r = rackPorId(e.rackId), rn = r ? r.nombre : "?";
+    const nt = nivelTemp(e.tempC, false);
+    if (nt !== "ok") c.push({ clave: "te:" + e.id, sev: nt, origen: e.nombre, msg: "«" + e.nombre + "» (" + rn + "): temperatura " + fmtTemp(e.tempC) + " (" + NOMBRE_NIVEL[nt] + ")" });
+    if (e.garantia && e.garantia < hoy) c.push({ clave: "ga:" + e.id, sev: "info", origen: e.nombre, msg: "«" + e.nombre + "» (" + rn + "): garantía vencida el " + e.garantia });
+    e.puertos.forEach(p => {
+      if (p.cableId && p.estado === "down") c.push({ clave: "lk:" + e.id + ":" + p.n, sev: "warn", origen: e.nombre, msg: "Enlace caído: «" + e.nombre + "» (" + rn + ") puerto " + p.n + " con cable " + p.cableId });
+    });
+  });
+  return c;
+}
+
+/* Sincroniza alertas con las condiciones actuales. Devuelve los textos de alertas críticas NUEVAS. */
+function revisarAlertas(silencioso) {
+  const act = condiciones(), mapa = new Map(act.map(c => [c.clave, c]));
+  datos.alertas.forEach(a => {
+    if (a.resuelta) return;
+    const c = mapa.get(a.clave);
+    if (!c) { a.resuelta = true; a.fechaResuelta = ahoraISO(); return; }
+    a.msg = c.msg; a.origen = c.origen;
+    if (a.sev !== c.sev) { a.sev = c.sev; a.ack = false; }
+  });
+  const nuevas = [];
+  act.forEach(c => {
+    if (datos.alertas.some(a => !a.resuelta && a.clave === c.clave)) return;
+    const a = { id: uid("al"), fecha: ahoraISO(), clave: c.clave, sev: c.sev, origen: c.origen, msg: c.msg, ack: false, ackPor: "", ackFecha: "", resuelta: false, fechaResuelta: "" };
+    datos.alertas.push(a); nuevas.push(a);
+  });
+  while (datos.alertas.length > MAX_ALERTAS) {
+    const i = datos.alertas.findIndex(a => a.resuelta);
+    datos.alertas.splice(i >= 0 ? i : 0, 1);
+  }
+  if (!silencioso) nuevas.forEach(a => bitacora("alerta", a.clave, "[" + a.sev.toUpperCase() + "] " + a.msg));
+  return nuevas.filter(a => a.sev === "crit").map(a => a.msg);
+}
+function avisarCriticas(lista, normal) {
+  if (lista.length) mensaje("⚠ Alerta crítica: " + lista.join(" | "), true);
+  else if (normal) mensaje(normal, false);
+}
+function reconocer(a) {
+  a.ack = true; a.ackPor = datos.meta.operador || "anónimo"; a.ackFecha = ahoraISO();
+  bitacora("ack", a.clave, "Alerta reconocida: " + a.msg);
+}
+
+/* ---------- Validación de equipos ---------- */
+function validarEquipo(e, ignorarId) {
+  const rack = rackPorId(e.rackId);
+  if (!rack) return "Rack no válido.";
+  if (!e.nombre) return "Nombre obligatorio.";
+  if (!Number.isInteger(e.uInicio) || e.uInicio < 1) return "La U inicial debe ser un entero ≥ 1.";
+  if (!Number.isInteger(e.alturaU) || e.alturaU < 1) return "El alto debe ser un entero ≥ 1 U.";
+  if (topeU(e) > rack.alturaU) return "El dispositivo supera el límite de altura del rack (" + rack.alturaU + " U).";
+  if (!tempValida(e.tempC)) return "Temperatura fuera de rango (" + TEMP_MIN + " a " + TEMP_MAX + " °C).";
+  if (e.profMm > rack.profMm) return "El equipo (" + e.profMm + " mm) es más profundo que el rack (" + rack.profMm + " mm).";
+  const choque = datos.equipos.find(o => o.id !== ignorarId && o.rackId === e.rackId && e.uInicio <= topeU(o) && o.uInicio <= topeU(e));
+  if (choque) return "Conflicto de espacio con «" + choque.nombre + "» (U " + choque.uInicio + "-" + topeU(choque) + ").";
+  return null;
+}
+function validarActivo(e) {
+  if (e.ip && !/^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(e.ip)) return "La IP de gestión no es una dirección IPv4 válida.";
+  if (e.mac && !/^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/.test(e.mac)) return "La MAC debe tener el formato AA:BB:CC:DD:EE:FF.";
+  if (e.garantia && !/^\d{4}-\d{2}-\d{2}$/.test(e.garantia)) return "La fecha de garantía no es válida.";
+  if (!(e.pesoKg >= 0 && e.pesoKg <= 500)) return "El peso debe estar entre 0 y 500 kg.";
+  if (!(e.consumoW >= 0 && e.consumoW <= 20000)) return "El consumo debe estar entre 0 y 20000 W.";
+  return null;
+}
+
+function nombreLibre(rackId, tipo) {
+  const base = def(tipo).nombre;
+  const usados = new Set(datos.equipos.filter(e => e.rackId === rackId).map(e => e.nombre));
+  let n = 1;
+  while (usados.has(base + " " + n)) n++;
+  return base + " " + n;
+}
+function nuevoEquipo(rackId, tipo, u, nombre) {
+  const df = def(tipo);
+  const e = { id: uid("eq"), rackId: rackId, nombre: nombre, tipo: tipo, uInicio: u, alturaU: df.alto, consumoW: df.w, tempC: df.temp, cargaPct: df.carga,
+    estado: "CONFIRMADO", pdu: "", marca: "", modelo: "", serial: "", ip: "", mac: "", responsable: "", garantia: "", pesoKg: df.kg, profMm: 450, puertos: crearPuertos(tipo) };
+  if (tipo === "ups") { e.capacidadW = 1500; e.bateriaPct = 100; }
+  return e;
+}
+
+function colocar(tipo, u, rackIdTarget) {
+  const rack = rackPorId(rackIdTarget);
+  if (!rack) return false;
+  const e = nuevoEquipo(rack.id, tipo, u, nombreLibre(rack.id, tipo));
+  const error = validarEquipo(e);
+  if (error) { mensaje(error, true); return false; }
+  const s = instantanea();
+  datos.equipos.push(e); registrarSnap(s);
+  bitacora("alta", e.id, "Dispositivo «" + e.nombre + "» colocado en " + rack.nombre + " (U " + u + ")");
+  const al = revisarAlertas();
+  guardar(); seleccionId = e.id; seleccionMulti.clear(); render();
+  avisarCriticas(al, "«" + e.nombre + "» instalado correctamente en " + rack.nombre);
+  return true;
+}
+function primerHueco(rack, tipo) {
+  const alto = def(tipo).alto;
+  for (let u = rack.alturaU - alto + 1; u >= 1; u--) {
+    const e = nuevoEquipo(rack.id, tipo, u, "x");
+    if (!validarEquipo(e)) return u;
+  }
+  return null;
+}
+function autoColocar(tipo) {
+  const rack = datos.racks.find(r => rastroAbiertos.has(r.id)) || datos.racks[0];
+  if (!rack) return;
+  const u = primerHueco(rack, tipo);
+  if (u === null) { mensaje("No hay hueco libre para «" + def(tipo).nombre + "» en " + rack.nombre + ".", true); return; }
+  colocar(tipo, u, rack.id);
+}
+
+function moverEquipo(id, nuevaU, nuevoRackId) {
+  const e = equipoPorId(id);
+  if (!e) return false;
+  const antesU = e.uInicio, antesRack = e.rackId, s = instantanea();
+  if (nuevoRackId) e.rackId = nuevoRackId;
+  e.uInicio = nuevaU;
+  const error = validarEquipo(e, id);
+  if (error) { e.uInicio = antesU; e.rackId = antesRack; mensaje(error, true); return false; }
+  registrarSnap(s);
+  const rObj = rackPorId(e.rackId);
+  bitacora("movimiento", e.id, "«" + e.nombre + "» reubicado a " + rObj.nombre + " (U " + nuevaU + ")");
+  revisarAlertas(); guardar(); render();
+  mensaje("Dispositivo reubicado con éxito.", false);
+  return true;
+}
+
+function quitarEquipo(id, silencioso) {
+  const e = equipoPorId(id);
+  if (!e) return;
+  const s = instantanea();
+  datos.circuitos.filter(c => c.aEq === id || c.bEq === id).forEach(liberarCable);
+  datos.equipos = datos.equipos.filter(x => x.id !== id);
+  registrarSnap(s);
+  bitacora("baja", id, "Dispositivo «" + e.nombre + "» retirado del sistema");
+  if (seleccionId === id) seleccionId = null;
+  seleccionMulti.delete(id);
+  if (selPuerto && selPuerto.eq === id) selPuerto = null;
+  revisarAlertas(); guardar();
+  if (!silencioso) { render(); mensaje("Dispositivo retirado del rack y del inventario.", false); }
+}
+
+/* ---------- Lecturas manuales ---------- */
+function aplicarSensorRack(id, campo, valor) {
+  const r = rackPorId(id); if (!r) return;
+  const ok = campo === "humedadPct" ? (typeof valor === "number" && isFinite(valor) && valor >= 0 && valor <= 100) : tempValida(valor);
+  if (!ok) { mensaje(campo === "humedadPct" ? "La humedad debe estar entre 0 y 100 %." : "Temperatura fuera de rango (" + TEMP_MIN + " a " + TEMP_MAX + " °C).", true); render(); return; }
+  r[campo] = round1(valor);
+  const nombres = { tempC: "sensor de entrada", tempSalidaC: "sensor de salida", humedadPct: "humedad" };
+  bitacora("sensor", id, r.nombre + ": " + nombres[campo] + " fijado en " + r[campo]);
+  muestrear(); const al = revisarAlertas(); guardar(); render();
+  avisarCriticas(al, "Lectura actualizada.");
+}
+function aplicarTempEquipo(id, valor) {
+  const e = equipoPorId(id); if (!e) return;
+  if (!tempValida(valor)) { mensaje("Temperatura fuera de rango (" + TEMP_MIN + " a " + TEMP_MAX + " °C).", true); return; }
+  e.tempC = round1(valor);
+  bitacora("temperatura", id, "«" + e.nombre + "»: temperatura fijada en " + fmtTemp(e.tempC));
+  muestrear(); const al = revisarAlertas(); guardar(); render();
+  avisarCriticas(al, "Temperatura actualizada.");
+}
+function aplicarCarga(id, valor) {
+  const e = equipoPorId(id); if (!e) return;
+  if (typeof valor !== "number" || !isFinite(valor) || valor < 0 || valor > 100) { mensaje("La carga debe estar entre 0 y 100 %.", true); return; }
+  e.cargaPct = round1(valor);
+  bitacora("carga", id, "«" + e.nombre + "»: carga fijada en " + e.cargaPct + " %");
+  muestrear(); const al = revisarAlertas(); guardar(); render();
+  avisarCriticas(al, "Carga actualizada.");
+}
+function aplicarUPS(id, cap, bat) {
+  const e = equipoPorId(id); if (!e || e.tipo !== "ups") return;
+  if (!(cap >= 100 && cap <= 100000) || !(bat >= 0 && bat <= 100)) { mensaje("Capacidad: 100–100000 W · Batería: 0–100 %.", true); return; }
+  const s = instantanea();
+  e.capacidadW = Math.round(cap); e.bateriaPct = round1(bat); registrarSnap(s);
+  bitacora("ups", id, "«" + e.nombre + "»: capacidad " + e.capacidadW + " W, batería " + e.bateriaPct + " %");
+  const al = revisarAlertas(); guardar(); render(); avisarCriticas(al, "UPS actualizada.");
+}
+function cambiarEstado(id, estado) {
+  const e = equipoPorId(id); if (!e || !Object.prototype.hasOwnProperty.call(ESTADOS, estado)) return;
+  const s = instantanea(); e.estado = estado; registrarSnap(s);
+  bitacora("estado", id, "«" + e.nombre + "»: estado operativo → " + estado);
+  guardar(); render(); mensaje("Estado actualizado.", false);
+}
+
+/* ---------- Seguridad física ---------- */
+function cambiarPuerta(rack) {
+  rack.puerta = rack.puerta === "abierta" ? "cerrada" : "abierta";
+  bitacora("acceso", rack.id, rack.nombre + ": puerta " + (rack.puerta === "abierta" ? "ABIERTA (acceso registrado)" : "cerrada"));
+  const al = revisarAlertas(); guardar(); render(); avisarCriticas(al, rack.nombre + ": puerta " + rack.puerta + ".");
+}
+function alternarSensor(rack, campo) {
+  rack[campo] = rack[campo] === "OK" ? "ALARMA" : "OK";
+  bitacora("seguridad", rack.id, rack.nombre + ": sensor de " + (campo === "humo" ? "humo" : "agua") + " → " + rack[campo] + " (prueba/lectura manual)");
+  const al = revisarAlertas(); guardar(); render(); avisarCriticas(al, "Sensor actualizado.");
+}
+
+/* ---------- Puertos ---------- */
+function aplicarPuerto(eqId, n, vals) {
+  const e = equipoPorId(eqId), p = puerto(e, n); if (!p) return;
+  if (ESTADOS_PUERTO.indexOf(vals.estado) < 0 || VELOCIDADES.indexOf(vals.vel) < 0) { mensaje("Valores de puerto no válidos.", true); return; }
+  if (!Number.isInteger(vals.vlan) || vals.vlan < 1 || vals.vlan > 4094) { mensaje("La VLAN debe ser un entero entre 1 y 4094.", true); return; }
+  if (vals.estado === "up" && !p.cableId) { mensaje("Un puerto sin cable no puede estar UP: registra primero el cable.", true); return; }
+  const s = instantanea();
+  p.estado = vals.estado; p.vel = vals.vel; p.vlan = vals.vlan; p.poe = !!vals.poe; p.nota = String(vals.nota || "").slice(0, 80);
+  registrarSnap(s);
+  bitacora("puerto", eqId, "«" + e.nombre + "» P" + n + ": " + p.estado + ", " + p.vel + ", VLAN " + p.vlan + (p.poe ? ", PoE" : ""));
+  const al = revisarAlertas(); guardar(); render(); avisarCriticas(al, "Puerto " + n + " actualizado.");
+}
+
+/* ---------- Muestreo e historial ---------- */
+function muestrear() {
+  const t = Date.now();
+  datos.racks.forEach(r => {
+    const eqs = datos.equipos.filter(e => e.rackId === r.id);
+    const tmax = eqs.length ? eqs.reduce((m, e) => Math.max(m, e.tempC), -Infinity) : null;
+    const activos = eqs.filter(e => def(e.tipo).carga > 0);
+    const carga = activos.length ? activos.reduce((s, e) => s + e.cargaPct, 0) / activos.length : 0;
+    const pot = potenciaRack(r) / (r.capacidadW || CAPACIDAD_RACK_W) * 100;
+    const arr = datos.historial[r.id] || (datos.historial[r.id] = []);
+    arr.push({ t: t, temp: r.tempC, tsal: r.tempSalidaC, tmax: tmax, hum: r.humedadPct, carga: round1(carga), pot: round1(pot) });
+    while (arr.length > MAX_HIST) arr.shift();
+  });
+}
+function fmtHora(t) { return new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }); }
+
+function graficaBarras(cfg) {
+  const W = 420, H = 180, L = 38, R = 34, T = 10, B = 24, pw = W - L - R, ph = H - T - B;
+  const m = cfg.muestras.slice(-BARRAS_MAX);
+  const caja = el("div", "", "grafica-caja");
+  caja.append(el("strong", cfg.titulo));
+  if (m.length < 2) { caja.append(el("p", "Recopilando lecturas… (una cada " + (MUESTREO_MS / 1000) + " s)", "muted")); return caja; }
+  const t0 = m[0].t, t1 = m[m.length - 1].t;
+  let ymin = cfg.ymin, ymax = cfg.ymax;
+  if (cfg.auto) {
+    cfg.series.forEach(s => m.forEach(p => {
+      const v = p[s.clave];
+      if (typeof v === "number") { ymax = Math.max(ymax, Math.ceil(v / 5) * 5 + 5); ymin = Math.min(ymin, Math.floor(v / 5) * 5 - 5); }
+    }));
+  }
+  const Y = v => T + ph - ((Math.max(ymin, Math.min(ymax, v)) - ymin) / (ymax - ymin)) * ph;
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img">';
+  for (let i = 0; i <= 4; i++) {
+    const v = ymin + (ymax - ymin) * i / 4, y = Y(v).toFixed(1);
+    svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" style="stroke:var(--borde)" stroke-width="1"/>' +
+           '<text x="' + (L - 4) + '" y="' + (Number(y) + 3) + '" text-anchor="end" font-size="9" style="fill:var(--muted)">' + Math.round(v) + '</text>';
+  }
+  (cfg.umbrales || []).filter(u => u.v > ymin && u.v < ymax).forEach(u => {
+    const y = Y(u.v).toFixed(1);
+    svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" style="stroke:' + u.color + '" stroke-width="1" stroke-dasharray="4 3"/>' +
+           '<text x="' + (W - R + 3) + '" y="' + (Number(y) + 3) + '" font-size="9" style="fill:' + u.color + '">' + u.v + '</text>';
+  });
+  const ranura = pw / m.length, grupo = ranura * 0.8, ancho = grupo / cfg.series.length, base = T + ph;
+  m.forEach((p, i) => {
+    cfg.series.forEach((s, j) => {
+      const v = p[s.clave];
+      if (typeof v !== "number") return;
+      const y = Y(v), alto = Math.max(1, base - y), x = L + i * ranura + (ranura - grupo) / 2 + j * ancho;
+      svg += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + Math.max(1, ancho - 1).toFixed(1) + '" height="' + alto.toFixed(1) +
+             '" rx="1" fill-opacity="0.85" style="fill:' + s.color + '"><title>' + fmtHora(p.t) + ' · ' + s.nombre + ': ' + Number(v).toFixed(1) + ' ' + s.unidad + '</title></rect>';
+    });
+  });
+  svg += '<text x="' + L + '" y="' + (H - 6) + '" font-size="9" style="fill:var(--muted)">' + fmtHora(t0) + '</text>' +
+         '<text x="' + (W - R) + '" y="' + (H - 6) + '" text-anchor="end" font-size="9" style="fill:var(--muted)">' + fmtHora(t1) + '</text></svg>';
+  const wrap = el("div"); wrap.innerHTML = svg;
+  const leyenda = el("div", "", "leyenda-graf"), resumen = [];
+  cfg.series.forEach(s => {
+    const pts = m.filter(p => typeof p[s.clave] === "number");
+    const ult = pts.length ? pts[pts.length - 1][s.clave] : null;
+    const txt = ult === null ? "sin datos" : Number(ult).toFixed(1) + " " + s.unidad;
+    const item = el("span"), sw = el("span", "", "sw"); sw.style.background = s.color;
+    item.append(sw, document.createTextNode(s.nombre + ": " + txt)); leyenda.append(item); resumen.push(s.nombre + " " + txt);
+  });
+  wrap.firstChild.setAttribute("aria-label", cfg.titulo + ". Último valor: " + resumen.join("; "));
+  caja.append(wrap, leyenda);
+  return caja;
+}
+function construirGraficas(rack, cont) {
+  cont.replaceChildren();
+  const m = datos.historial[rack.id] || [];
+  cont.append(
+    graficaBarras({ titulo: "🌡️ Temperatura (°C)", muestras: m, ymin: 15, ymax: 60, auto: true,
+      series: [
+        { nombre: "Entrada (pasillo frío)", color: "var(--acento)", clave: "temp", unidad: "°C" },
+        { nombre: "Salida (pasillo caliente)", color: "var(--pend)", clave: "tsal", unidad: "°C" },
+        { nombre: "Equipo más caliente", color: "var(--info)", clave: "tmax", unidad: "°C" }
+      ],
+      umbrales: [{ v: UMBRAL_RACK.warn, color: "var(--info)" }, { v: UMBRAL_RACK.crit, color: "var(--pend)" }, { v: UMBRAL_EQUIPO.crit, color: "var(--pend)" }] }),
+    graficaBarras({ titulo: "⚡ Rendimiento (%)", muestras: m, ymin: 0, ymax: 100,
+      series: [
+        { nombre: "Carga promedio de equipos", color: "var(--ok)", clave: "carga", unidad: "%" },
+        { nombre: "Potencia vs. capacidad", color: "var(--ej)", clave: "pot", unidad: "%" }
+      ], umbrales: [{ v: 80, color: "var(--pend)" }] }),
+    graficaBarras({ titulo: "💧 Humedad relativa (%)", muestras: m, ymin: 0, ymax: 100,
+      series: [{ nombre: "Humedad", color: "var(--acento)", clave: "hum", unidad: "%" }],
+      umbrales: [{ v: 40, color: "var(--info)" }, { v: 60, color: "var(--info)" }] })
+  );
+}
+function actualizarGraficas() { datos.racks.forEach(r => { const c = $("graf-" + r.id); if (c) construirGraficas(r, c); }); }
+
+/* ---------- Render: resumen ---------- */
+function renderTarjetas() {
+  const ul = $("tarjetas"); ul.replaceChildren();
+  const uOcup = datos.racks.reduce((s, r) => s + unidadesOcupadas(r), 0);
+  const uTot = datos.racks.reduce((s, r) => s + r.alturaU, 0);
+  const watts = datos.racks.reduce((s, r) => s + potenciaRack(r), 0);
+  const maxEq = datos.equipos.reduce((m, e) => Math.max(m, e.tempC), -Infinity);
+  const maxRack = datos.racks.reduce((m, r) => Math.max(m, r.tempC), -Infinity);
+  const pt = puertosTotales();
+  const activas = datos.alertas.filter(a => !a.resuelta), crit = activas.filter(a => a.sev === "crit").length;
+  [
+    ["Racks", datos.racks.length, ""],
+    ["Dispositivos", datos.equipos.length, ""],
+    ["U ocupadas", uOcup + " / " + uTot, ""],
+    ["Consumo estimado", Math.round(watts) + " W · " + Math.round(watts * BTU_POR_W) + " BTU/h", ""],
+    ["Puertos con cable", pt.usados + " / " + pt.total, ""],
+    ["Cables", datos.circuitos.length, ""],
+    ["Temp. máx. entrada rack", isFinite(maxRack) ? fmtTemp(maxRack) : "—", isFinite(maxRack) ? "tmp-" + nivelTemp(maxRack, true) : ""],
+    ["Temp. máx. equipos", isFinite(maxEq) ? fmtTemp(maxEq) : "—", isFinite(maxEq) ? "tmp-" + nivelTemp(maxEq, false) : ""],
+    ["Alertas activas", activas.length + (crit ? " (" + crit + " críticas)" : ""), crit ? "tmp-crit" : (activas.length ? "tmp-warn" : "tmp-ok")]
+  ].forEach(p => {
+    const li = el("li"); li.append(el("span", p[1], "num" + (p[2] ? " " + p[2] : "")), el("span", p[0])); ul.append(li);
+  });
+}
+
+function renderAlertas() {
+  const tb = $("tbody-alertas"); tb.replaceChildren();
+  const modo = $("f-alertas-filtro").value;
+  const lista = datos.alertas.slice().reverse().filter(a => modo === "todas" || !a.resuelta).slice(0, 100);
+  if (!lista.length) {
+    const tr = el("tr"), td = el("td", "Sin alertas " + (modo === "todas" ? "registradas" : "activas") + "."); td.colSpan = 6; tr.append(td); tb.append(tr); return;
+  }
+  lista.forEach(a => {
+    const tr = el("tr");
+    const tdS = el("td"); tdS.append(insigniaSev(a.sev));
+    tr.append(el("td", new Date(a.fecha).toLocaleString()), tdS, el("td", a.origen), el("td", a.msg),
+      el("td", a.resuelta ? "Resuelta " + new Date(a.fechaResuelta).toLocaleTimeString() : (a.ack ? "Reconocida por " + (a.ackPor || "—") : "Activa · sin reconocer")));
+    const tdA = el("td");
+    if (!a.resuelta && !a.ack) {
+      const b = el("button", "Reconocer", "sec"); b.type = "button";
+      b.addEventListener("click", () => { reconocer(a); guardar(); render(); });
+      tdA.append(b);
+    }
+    tr.append(tdA); tb.append(tr);
+  });
+}
+
+/* ---------- Render: racks ---------- */
+function tarjeta(titulo, valor, pct, color, notas) {
+  const c = el("div", "", "stat-card"), r = el("div", "", "stat-row");
+  r.append(el("span", titulo), typeof valor === "string" ? el("strong", valor) : valor); c.append(r);
+  if (pct !== null && pct !== undefined) {
+    const w = el("div", "", "barra-progreso-wrap"), f = el("div", "", "barra-progreso-fill");
+    f.style.width = clamp(pct, 0, 100) + "%"; f.style.backgroundColor = color; w.append(f); c.append(w);
+  }
+  (notas || []).forEach(n => c.append(typeof n === "string" ? el("span", n, "muted") : n));
+  return c;
+}
+function filaValor(texto, nodo) { const r = el("div", "", "stat-row"); r.append(el("span", texto), nodo); return r; }
+function colorNivel(n) { return n === "crit" ? "var(--pend)" : (n === "warn" ? "var(--info)" : "var(--ok)"); }
+function inputRack(rack, campo, texto, min, max) {
+  const r = el("div", "", "stat-row"), id = "sr-" + campo + "-" + rack.id;
+  const lb = el("label", texto); lb.htmlFor = id;
+  const inp = el("input"); inp.id = id; inp.type = "number"; inp.step = "0.1"; inp.min = String(min); inp.max = String(max); inp.value = rack[campo];
+  inp.addEventListener("change", () => aplicarSensorRack(rack.id, campo, Number(inp.value)));
+  r.append(lb, inp); return r;
+}
+
+function textoPosterior(e) {
+  const partes = [];
+  if (e.puertos.length) partes.push(e.puertos.filter(p => p.cableId).length + "/" + e.puertos.length + " puertos");
+  if (e.pdu) partes.push("PDU " + e.pdu);
+  if (e.ip) partes.push(e.ip);
+  return partes.join(" · ");
+}
+
+function clicEquipo(ev, e) {
+  ev.stopPropagation();
+  if (ev.ctrlKey || ev.metaKey || ev.shiftKey) {
+    if (seleccionId && !seleccionMulti.size) seleccionMulti.add(seleccionId);
+    if (seleccionMulti.has(e.id)) seleccionMulti.delete(e.id); else seleccionMulti.add(e.id);
+    seleccionId = e.id;
+  } else { seleccionMulti.clear(); seleccionId = e.id; }
+  selPuerto = null; refocoId = e.id; render();
+}
+
+function renderRacksAcordeon() {
+  const contenedor = $("lista-racks-acordeon");
+  contenedor.replaceChildren();
+
+  datos.racks.forEach(rack => {
+    const abierto = rastroAbiertos.has(rack.id);
+    const item = el("div", "", "rack-acordeon-item" + (abierto ? " abierto" : ""));
+    const uOcup = unidadesOcupadas(rack), pctU = Math.round(uOcup / rack.alturaU * 100);
+    const potW = potenciaRack(rack), capW = rack.capacidadW || CAPACIDAD_RACK_W;
+    const equiposRack = datos.equipos.filter(e => e.rackId === rack.id), totalEq = equiposRack.length;
+    const cOk = equiposRack.filter(e => e.estado === "CONFIRMADO").length;
+    const cWarn = equiposRack.filter(e => e.estado === "INFERENCIA POR VALIDAR" || e.estado === "EJEMPLO DIDÁCTICO").length;
+    const cPend = totalEq - cOk - cWarn;
+    const pOk = totalEq ? Math.round(cOk / totalEq * 100) : 0, pWarn = totalEq ? Math.round(cWarn / totalEq * 100) : 0, pPend = totalEq ? 100 - pOk - pWarn : 0;
+
+    const header = el("div", "", "rack-acordeon-header");
+    header.tabIndex = 0; header.setAttribute("role", "button"); header.setAttribute("aria-expanded", abierto ? "true" : "false");
+    const infoTitulo = el("div");
+    infoTitulo.append(el("strong", rack.nombre), el("span", " · " + uOcup + " / " + rack.alturaU + " U (" + pctU + "%) · " + Math.round(potW) + " W · " + totalEq + " disp.", "muted"));
+    const derecha = el("div", "", "rack-header-der");
+    if (rack.humo === "ALARMA") derecha.append(insignia("🔥 HUMO", "crit"));
+    if (rack.agua === "ALARMA") derecha.append(insignia("💧 AGUA", "crit"));
+    if (rack.puerta === "abierta") derecha.append(insignia("🚪 ABIERTA", "warn"));
+    derecha.append(iconoTemp(rack.tempC, true, "temp-rack"), el("span", abierto ? "▲ Contraer" : "▼ Desplegar"));
+    header.append(infoTitulo, derecha);
+    const alternar = () => { if (rastroAbiertos.has(rack.id)) rastroAbiertos.delete(rack.id); else rastroAbiertos.add(rack.id); render(); };
+    header.addEventListener("click", alternar);
+    header.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); alternar(); } });
+
+    const contenido = el("div", "", "rack-acordeon-contenido");
+    const panelStats = el("div", "", "rack-stats-panel");
+    panelStats.append(el("strong", "📊 Estadísticas, energía, temperatura y seguridad del gabinete"));
+    const grid = el("div", "", "rack-stats-grid");
+
+    // Espacio U
+    const libres = rack.alturaU - uOcup;
+    grid.append(tarjeta("Espacio U usado:", uOcup + "/" + rack.alturaU + " (" + pctU + "%)", pctU, pctU > 85 ? "var(--pend)" : (pctU > 60 ? "var(--info)" : "var(--acento)"),
+      [libres + " U libres sin panel ciego" + (libres > 0 ? " (riesgo de recirculación de aire caliente)" : "")]));
+
+    // Potencia / PDU / UPS
+    const rep = repartoPDU(rack), pctP = potW / capW * 100, au = autonomiaUPS(rack);
+    const notasP = [Math.round(potW * BTU_POR_W) + " BTU/h de calor a disipar",
+      "PDU A: " + Math.round(rep.A) + " W · PDU B: " + Math.round(rep.B) + " W" + (rep.sin > 0 ? " · sin PDU: " + Math.round(rep.sin) + " W (" + rep.sinN + " eq.)" : "")];
+    notasP.push(au ? "UPS «" + au.ups.nombre + "»: batería " + Math.round(au.ups.bateriaPct) + " % · carga " + Math.round(au.cargaPct) + " % · autonomía ~" + Math.round(au.minutos) + " min (estimada)" : "Sin UPS en este rack");
+    grid.append(tarjeta("Potencia estimada:", Math.round(potW) + " W / " + capW + " W", pctP, pctP > 100 ? "var(--pend)" : (pctP > 80 ? "var(--info)" : "var(--ok)"), notasP));
+
+    // Estado operativo
+    const cardE = el("div", "", "stat-card");
+    cardE.append(filaValor("Estado operativo (" + totalEq + " eq):", el("span", cOk + " OK | " + cWarn + " Rev | " + cPend + " Pend", "muted")));
+    const graf = el("div", "", "grafica-estados");
+    [["g-ok", pOk, "Confirmados: " + cOk], ["g-warn", pWarn, "Revisión: " + cWarn], ["g-pend", pPend, "Pendientes: " + cPend]].forEach(x => {
+      const sg = el("div", "", "g-seg " + x[0]); sg.style.width = x[1] + "%"; sg.title = x[2]; graf.append(sg);
+    });
+    cardE.append(graf); grid.append(cardE);
+
+    // Térmica
+    const nR = nivelTemp(rack.tempC, true), dT = rack.tempSalidaC - rack.tempC, nD = nivelDelta(dT), nH = nivelHumedad(rack.humedadPct);
+    const cardT = tarjeta("Entrada (pasillo frío):", iconoTemp(rack.tempC, true), (rack.tempC - 15) / 25 * 100, colorNivel(nR), []);
+    cardT.append(filaValor("Salida (pasillo caliente):", iconoTemp(rack.tempSalidaC, true)));
+    cardT.append(filaValor("ΔT salida − entrada:", el("strong", txtNum(dT) + " °C", "tmp-" + nD)));
+    cardT.append(filaValor("Humedad relativa:", el("strong", txtNum(rack.humedadPct) + " %", "tmp-" + nH)));
+    cardT.append(inputRack(rack, "tempC", "Sensor entrada (°C):", TEMP_MIN, TEMP_MAX));
+    cardT.append(inputRack(rack, "tempSalidaC", "Sensor salida (°C):", TEMP_MIN, TEMP_MAX));
+    cardT.append(inputRack(rack, "humedadPct", "Humedad (%):", 0, 100));
+    const caliente = equiposRack.reduce((m, e) => (!m || e.tempC > m.tempC) ? e : m, null);
+    cardT.append(el("span", caliente ? "Equipo más caliente: " + caliente.nombre + " (" + fmtTemp(caliente.tempC) + ")" : "Sin equipos instalados", "muted"));
+    grid.append(cardT);
+
+    // Peso
+    const kg = pesoRack(rack);
+    grid.append(tarjeta("Peso instalado:", txtNum(kg) + " / " + rack.cargaMaxKg + " kg", kg / rack.cargaMaxKg * 100, kg > rack.cargaMaxKg ? "var(--pend)" : (kg > rack.cargaMaxKg * 0.9 ? "var(--info)" : "var(--ok)"),
+      ["Profundidad útil del rack: " + rack.profMm + " mm"]));
+
+    // Seguridad física
+    const cardS = el("div", "", "stat-card");
+    cardS.append(el("strong", "🔒 Seguridad física"));
+    const bP = el("button", rack.puerta === "abierta" ? "Cerrar puerta" : "Abrir (registrar acceso)", "sec"); bP.type = "button";
+    bP.addEventListener("click", () => cambiarPuerta(rack));
+    const fP = filaValor("Puerta:", insignia(rack.puerta === "abierta" ? "ABIERTA" : "CERRADA", rack.puerta === "abierta" ? "warn" : "ok")); fP.append(bP);
+    const bH = el("button", "Probar alarma", "sec"); bH.type = "button"; bH.addEventListener("click", () => alternarSensor(rack, "humo"));
+    const fH = filaValor("Humo:", insignia(rack.humo, rack.humo === "OK" ? "ok" : "crit")); fH.append(bH);
+    const bA = el("button", "Probar alarma", "sec"); bA.type = "button"; bA.addEventListener("click", () => alternarSensor(rack, "agua"));
+    const fA = filaValor("Agua:", insignia(rack.agua, rack.agua === "OK" ? "ok" : "crit")); fA.append(bA);
+    cardS.append(fP, fH, fA, el("span", "Los accesos quedan en la bitácora con el operador indicado.", "muted"));
+    grid.append(cardS);
+
+    panelStats.append(grid);
+    const gcont = el("div", "", "graficas-rack"); gcont.id = "graf-" + rack.id; construirGraficas(rack, gcont);
+    panelStats.append(gcont);
+    contenido.append(panelStats);
+
+    // Vista física del rack
+    const vista = vistaRack[rack.id] || "frontal";
+    const colRack = el("div", "", "rack");
+    const tog = el("div", "", "vista-toggle"); tog.append(el("strong", "Vista:"));
+    ["frontal", "posterior"].forEach(v => {
+      const b = el("button", v === "frontal" ? "Frontal" : "Posterior", "sec"); b.type = "button"; b.setAttribute("aria-pressed", vista === v ? "true" : "false");
+      b.addEventListener("click", () => { vistaRack[rack.id] = v; render(); }); tog.append(b);
+    });
+    colRack.append(tog);
+    const rg = el("div", "", "rack-grid" + (vista === "posterior" ? " posterior" : ""));
+    rg.style.gridTemplateRows = "repeat(" + rack.alturaU + ", var(--u))";
+    for (let u = rack.alturaU; u >= 1; u--) {
+      const fila = rack.alturaU - u + 1;
+      const num = el("span", u, "u-num"); num.style.gridRow = String(fila); num.style.gridColumn = "1";
+      const s = el("span", "", "u-slot"); s.style.gridRow = String(fila); s.style.gridColumn = "2";
+      s.addEventListener("dragover", ev => { ev.preventDefault(); s.classList.add("drag-over-slot"); });
+      s.addEventListener("dragleave", () => s.classList.remove("drag-over-slot"));
+      s.addEventListener("drop", ev => {
+        ev.preventDefault(); ev.stopPropagation(); s.classList.remove("drag-over-slot");
+        if (!arrastreInfo) return;
+        if (arrastreInfo.tipo === "kit") colocar(arrastreInfo.valor, u, rack.id);
+        else if (arrastreInfo.tipo === "equipo") moverEquipo(arrastreInfo.id, u, rack.id);
+        arrastreInfo = null;
+      });
+      rg.append(num, s);
+    }
+    equiposRack.forEach(e => {
+      const top = topeU(e);
+      if (e.uInicio < 1 || top > rack.alturaU) return;
+      const b = document.createElement("div");
+      b.className = "equipo-icono t-" + e.tipo.toLowerCase() + (e.id === seleccionId ? " sel" : "") + (seleccionMulti.has(e.id) ? " multi" : "");
+      b.style.gridRow = (rack.alturaU - top + 1) + " / span " + e.alturaU; b.style.gridColumn = "2";
+      b.draggable = true; b.tabIndex = 0; b.setAttribute("role", "button"); b.dataset.eq = e.id;
+      b.setAttribute("aria-label", e.nombre + ", " + def(e.tipo).nombre + ", U " + e.uInicio + (e.alturaU > 1 ? " a " + top : "") + ". Enter para seleccionar, flechas arriba y abajo para mover.");
+      b.title = def(e.tipo).nombre + (e.modelo ? " · " + e.modelo : "") + (e.ip ? " · " + e.ip : "");
+      const izq = el("div", "", "equipo-info-izq");
+      if (vista === "frontal") {
+        const led = el("span", "", "led-estado " + (e.estado === "CONFIRMADO" ? "led-ok" : (e.estado === "INFERENCIA POR VALIDAR" ? "led-warn" : "led-pend")));
+        led.title = "Estado: " + e.estado; izq.append(led, el("span", e.nombre)); b.append(izq, iconoTemp(e.tempC, false, "temp-badge"));
+      } else {
+        izq.append(el("span", e.nombre)); b.append(izq, el("span", textoPosterior(e), "temp-badge"));
+      }
+      b.addEventListener("click", ev => clicEquipo(ev, e));
+      b.addEventListener("keydown", ev => {
+        if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); clicEquipo(ev, e); }
+        else if (ev.key === "ArrowUp") { ev.preventDefault(); refocoId = e.id; moverEquipo(e.id, e.uInicio + 1); }
+        else if (ev.key === "ArrowDown") { ev.preventDefault(); refocoId = e.id; moverEquipo(e.id, e.uInicio - 1); }
+      });
+      b.addEventListener("dragstart", ev => { arrastreInfo = { tipo: "equipo", id: e.id }; ev.dataTransfer.setData("text/plain", e.id); });
+      b.addEventListener("dragend", () => { arrastreInfo = null; });
+      rg.append(b);
+    });
+    colRack.append(rg); contenido.append(colRack);
+    item.append(header, contenido); contenedor.append(item);
+  });
+
+  renderBandejaGlobal(); renderDetalle(); renderSelectRack();
+  if (refocoId) {
+    const nodo = document.querySelector('[data-eq="' + refocoId + '"]');
+    if (nodo) nodo.focus();
+    refocoId = null;
+  }
+}
+
+function renderBandejaGlobal() {
+  const bandeja = $("bandeja-global"); bandeja.replaceChildren();
+  KIT.forEach(tipo => {
+    const chip = el("div", "", "chip-global t-" + tipo.toLowerCase());
+    chip.draggable = true; chip.tabIndex = 0; chip.setAttribute("role", "button");
+    chip.setAttribute("aria-label", "Instalar " + def(tipo).nombre + " en el primer hueco libre del rack desplegado");
+    chip.append(el("span", def(tipo).nombre + " (" + def(tipo).alto + " U)"));
+    chip.addEventListener("dragstart", ev => { arrastreInfo = { tipo: "kit", valor: tipo }; ev.dataTransfer.setData("text/plain", tipo); });
+    chip.addEventListener("dragend", () => { arrastreInfo = null; });
+    chip.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); autoColocar(tipo); } });
+    bandeja.append(chip);
+  });
+}
+
+function iniciarPapelera() {
+  const pap = $("zona-papelera");
+  pap.addEventListener("dragover", ev => { ev.preventDefault(); pap.classList.add("drag-over"); });
+  pap.addEventListener("dragleave", () => pap.classList.remove("drag-over"));
+  pap.addEventListener("drop", ev => {
+    ev.preventDefault(); pap.classList.remove("drag-over");
+    if (arrastreInfo && arrastreInfo.tipo === "equipo") { quitarEquipo(arrastreInfo.id); arrastreInfo = null; }
+  });
+}
+
+/* ---------- Render: detalle del equipo ---------- */
+function campoEl(id, texto, input) {
+  const d = el("div"), lb = el("label", texto); lb.htmlFor = id; input.id = id; d.append(lb, input); return d;
+}
+function inputNum(valor, min, max, paso) {
+  const i = el("input"); i.type = "number"; i.min = String(min); i.max = String(max); i.step = String(paso); i.value = valor; return i;
+}
+function selectDe(opciones, valor) {
+  const s = el("select");
+  opciones.forEach(o => { const op = el("option", o[1]); op.value = o[0]; s.append(op); });
+  s.value = valor; return s;
+}
+
+function panelPuertos(e) {
+  const wrap = el("div");
+  wrap.append(el("h3", "Mapa de puertos (" + e.puertos.filter(p => p.cableId).length + " con cable de " + e.puertos.length + ")"));
+  const grid = el("div", "", "puertos-grid");
+  e.puertos.forEach(p => {
+    const cls = "puerto-btn " + (p.estado === "up" ? "pt-up" : (p.estado === "deshabilitado" ? "pt-off" : "pt-down")) + (p.cableId ? " con-cable" : "") + (selPuerto && selPuerto.eq === e.id && selPuerto.n === p.n ? " sel" : "");
+    const b = el("button", p.n, cls); b.type = "button";
+    b.title = "P" + p.n + " · " + p.estado + " · " + p.vel + " · VLAN " + p.vlan + (p.poe ? " · PoE" : "") + (p.cableId ? " · cable " + p.cableId : " · sin cable");
+    b.setAttribute("aria-label", b.title);
+    b.addEventListener("click", () => { selPuerto = { eq: e.id, n: p.n }; renderDetalle(); });
+    grid.append(b);
+  });
+  wrap.append(grid, el("p", "Borde verde = UP · rojo = DOWN · gris = deshabilitado · barra azul inferior = tiene cable.", "muted"));
+  if (selPuerto && selPuerto.eq === e.id) {
+    const p = puerto(e, selPuerto.n);
+    if (p) {
+      const pasivo = e.tipo === "patchpanel" || e.tipo === "odf";
+      wrap.append(el("h3", "Puerto " + p.n));
+      const campos = el("div", "", "campos");
+      const sEst = selectDe([["up", "UP"], ["down", "DOWN"], ["deshabilitado", "Deshabilitado"]], p.estado);
+      const sVel = selectDe(VELOCIDADES.map(v => [v, v]), VELOCIDADES.indexOf(p.vel) >= 0 ? p.vel : "1G");
+      const iVlan = inputNum(p.vlan, 1, 4094, 1);
+      const sPoe = selectDe([["0", "PoE apagado"], ["1", "PoE activo"]], p.poe ? "1" : "0");
+      const iNota = el("input"); iNota.type = "text"; iNota.maxLength = 80; iNota.value = p.nota;
+      campos.append(campoEl("p-estado", "Estado del enlace", sEst), campoEl("p-vel", "Velocidad", sVel));
+      if (!pasivo) campos.append(campoEl("p-vlan", "VLAN", iVlan));
+      if (e.tipo === "switch" || e.tipo === "ap") campos.append(campoEl("p-poe", "PoE", sPoe));
+      campos.append(campoEl("p-nota", "Nota", iNota));
+      wrap.append(campos);
+      const c = p.cableId ? cablePorId(p.cableId) : null;
+      wrap.append(el("p", c ? "Conectado por " + c.id + ": " + etiquetaCable(c) : "Sin cable conectado.", "muted"));
+      const acc = el("div", "", "acciones");
+      const bA = el("button", "Aplicar puerto", "sec"); bA.type = "button";
+      bA.addEventListener("click", () => aplicarPuerto(e.id, p.n, { estado: sEst.value, vel: sVel.value, vlan: pasivo ? p.vlan : Number(iVlan.value), poe: sPoe.value === "1", nota: iNota.value }));
+      acc.append(bA);
+      if (c) { const bD = el("button", "Desconectar cable", "peligro"); bD.type = "button"; bD.addEventListener("click", () => quitarCable(c.id)); acc.append(bD); }
+      wrap.append(acc);
+    }
+  }
+  return wrap;
+}
+
+function renderLote(cont) {
+  const ids = [...seleccionMulti].filter(id => equipoPorId(id));
+  cont.append(el("h3", ids.length + " equipos seleccionados"));
+  cont.append(el("p", ids.map(id => equipoPorId(id).nombre).join(", "), "muted"));
+  const campos = el("div", "", "campos");
+  const sEst = selectDe(Object.keys(ESTADOS).map(k => [k, k]), "CONFIRMADO");
+  const sRack = selectDe(datos.racks.map(r => [r.id, r.nombre]), datos.racks[0].id);
+  campos.append(campoEl("l-estado", "Cambiar estado a", sEst), campoEl("l-rack", "Mover a rack (misma U)", sRack));
+  cont.append(campos);
+  const acc = el("div", "", "acciones");
+  const mk = (txt, cls, fn) => { const b = el("button", txt, cls); b.type = "button"; b.addEventListener("click", fn); return b; };
+  acc.append(
+    mk("Aplicar estado", "sec", () => {
+      const s = instantanea(); ids.forEach(id => { equipoPorId(id).estado = sEst.value; }); registrarSnap(s);
+      bitacora("estado", "", ids.length + " equipos → " + sEst.value); guardar(); render(); mensaje("Estado aplicado a " + ids.length + " equipos.", false);
+    }),
+    mk("Mover seleccionados", "sec", () => moverLote(ids, sRack.value)),
+    mk("Retirar seleccionados", "peligro", () => {
+      if (!confirm("¿Retirar " + ids.length + " equipos del sistema?")) return;
+      const s = instantanea(); ids.forEach(id => quitarEquipo(id, true)); registrarSnap(s);
+      seleccionMulti.clear(); seleccionId = null; render(); mensaje(ids.length + " equipos retirados.", false);
+    }),
+    mk("Limpiar selección", "sec", () => { seleccionMulti.clear(); render(); })
+  );
+  cont.append(acc);
+}
+function moverLote(ids, rackId) {
+  const s = instantanea(), antes = ids.map(id => [id, equipoPorId(id).rackId]);
+  ids.forEach(id => { equipoPorId(id).rackId = rackId; });
+  for (const id of ids) {
+    const err = validarEquipo(equipoPorId(id), id);
+    if (err) { antes.forEach(a => { equipoPorId(a[0]).rackId = a[1]; }); mensaje("No se pudo mover el lote: " + err, true); return; }
+  }
+  registrarSnap(s);
+  bitacora("movimiento", "", ids.length + " equipos movidos a " + rackPorId(rackId).nombre);
+  revisarAlertas(); guardar(); render(); mensaje("Lote movido a " + rackPorId(rackId).nombre + ".", false);
+}
+
+function renderDetalle() {
+  const cont = $("detalle"); cont.replaceChildren();
+  if (seleccionMulti.size > 1) { renderLote(cont); return; }
+  const e = seleccionId ? equipoPorId(seleccionId) : null;
+  if (!e) {
+    cont.append(el("h3", "Control de dispositivo"), el("p", "Selecciona un equipo en cualquier rack para ver su estado, temperatura, puertos y datos de activo, o para moverlo. Ctrl/⌘ + clic selecciona varios.", "muted"));
+    return;
+  }
+  const rack = rackPorId(e.rackId), df = def(e.tipo);
+  cont.append(el("h3", e.nombre));
+  cont.append(el("p", df.nombre + " · " + rack.nombre + " · U " + e.uInicio + (e.alturaU > 1 ? "-" + topeU(e) : "") + " · " + e.consumoW + " W · " + e.pesoKg + " kg" + (e.pdu ? " · PDU " + e.pdu : ""), "muted"));
+  const datosActivo = [e.marca, e.modelo, e.serial ? "S/N " + e.serial : "", e.ip, e.mac, e.responsable ? "Resp.: " + e.responsable : "", e.garantia ? "Garantía: " + e.garantia : ""].filter(Boolean);
+  if (datosActivo.length) cont.append(el("p", datosActivo.join(" · "), "muted"));
+  const p = el("p"); p.append(etiquetaEstado(e.estado), document.createTextNode("  "), iconoTemp(e.tempC, false)); cont.append(p);
+  cont.append(el("p", "Temperatura " + fmtTemp(e.tempC) + " · nivel " + NOMBRE_NIVEL[nivelTemp(e.tempC, false)] + (df.carga > 0 ? " · carga " + e.cargaPct + " %" : ""), "muted"));
+
+  const campos = el("div", "", "campos");
+  const inT = inputNum(e.tempC, TEMP_MIN, TEMP_MAX, 0.1);
+  const sEst = selectDe(Object.keys(ESTADOS).map(k => [k, k]), Object.prototype.hasOwnProperty.call(ESTADOS, e.estado) ? e.estado : "PENDIENTE");
+  campos.append(campoEl("d-temp", "Temperatura del equipo (°C)", inT));
+  let inC = null;
+  if (df.carga > 0) { inC = inputNum(e.cargaPct, 0, 100, 0.1); campos.append(campoEl("d-carga", "Carga del equipo (%)", inC)); }
+  campos.append(campoEl("d-estado", "Estado operativo / LED", sEst));
+  const sRackM = selectDe(datos.racks.map(r => [r.id, r.nombre]), e.rackId);
+  const inU = inputNum(e.uInicio, 1, 60, 1);
+  campos.append(campoEl("d-mrack", "Mover a rack", sRackM), campoEl("d-mu", "U inicial destino", inU));
+  let inCap = null, inBat = null;
+  if (e.tipo === "ups") {
+    inCap = inputNum(e.capacidadW, 100, 100000, 1); inBat = inputNum(e.bateriaPct, 0, 100, 0.1);
+    campos.append(campoEl("d-cap", "Capacidad de la UPS (W)", inCap), campoEl("d-bat", "Batería (%)", inBat));
+  }
+  cont.append(campos);
+
+  const acc = el("div", "", "acciones");
+  const mk = (txt, cls, fn) => { const b = el("button", txt, cls); b.type = "button"; b.addEventListener("click", fn); return b; };
+  acc.append(
+    mk("Actualizar temperatura", "sec", () => aplicarTempEquipo(e.id, Number(inT.value))),
+    mk("Cambiar estado", "sec", () => cambiarEstado(e.id, sEst.value)),
+    mk("Mover", "sec", () => { refocoId = null; moverEquipo(e.id, Number(inU.value), sRackM.value); }),
+    mk("Subir 1 U", "sec", () => moverEquipo(e.id, e.uInicio + 1)),
+    mk("Bajar 1 U", "sec", () => moverEquipo(e.id, e.uInicio - 1)),
+    mk("Editar datos de activo", "sec", () => iniciarEdicion(e.id)),
+    mk("Retirar dispositivo", "peligro", () => quitarEquipo(e.id))
+  );
+  if (inC) acc.insertBefore(mk("Actualizar carga", "sec", () => aplicarCarga(e.id, Number(inC.value))), acc.children[1]);
+  if (inCap) acc.insertBefore(mk("Actualizar UPS", "sec", () => aplicarUPS(e.id, Number(inCap.value), Number(inBat.value))), acc.children[1]);
+  cont.append(acc);
+  if (e.puertos.length) cont.append(panelPuertos(e));
+}
+
+function renderSelectRack() {
+  const sel = $("f-rack"), previo = sel.value; sel.replaceChildren();
+  datos.racks.forEach(r => { const o = el("option", r.nombre); o.value = r.id; sel.append(o); });
+  if (previo) sel.value = previo;
+}
+
+/* ---------- Render: topología ---------- */
+function renderTopologia() {
+  const cont = $("topologia"); cont.replaceChildren();
+  const nodos = new Set(); datos.circuitos.forEach(c => { nodos.add(c.aEq); nodos.add(c.bEq); });
+  const eqs = datos.equipos.filter(e => nodos.has(e.id));
+  if (!eqs.length) { cont.append(el("p", "Aún no hay cables registrados. Registra cables en la sección de cableado para ver la topología.", "muted")); return; }
+  const racks = datos.racks.filter(r => eqs.some(e => e.rackId === r.id));
+  const colW = 280, nodeW = 180, nodeH = 24, gap = 12, top = 36, pos = new Map();
+  let maxN = 0;
+  racks.forEach((r, i) => {
+    const lista = eqs.filter(e => e.rackId === r.id).sort((a, b) => topeU(b) - topeU(a));
+    maxN = Math.max(maxN, lista.length);
+    lista.forEach((e, j) => pos.set(e.id, { x: i * colW + colW / 2, y: top + j * (nodeH + gap) + nodeH / 2, i: i }));
+  });
+  const W = racks.length * colW, H = top + maxN * (nodeH + gap) + 10;
+  const svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Diagrama de topología de red" });
+  svg.style.width = "100%"; svg.style.maxWidth = W + "px"; svg.style.height = "auto";
+  racks.forEach((r, i) => { const t = svgEl("text", { x: i * colW + colW / 2, y: 20, "text-anchor": "middle", "font-size": 13, "font-weight": 700 }, r.nombre); t.style.fill = "var(--fg)"; svg.append(t); });
+  datos.circuitos.forEach(c => {
+    const a = pos.get(c.aEq), b = pos.get(c.bEq); if (!a || !b) return;
+    const up = estadoEnlace(c) === "UP"; let d;
+    if (a.i === b.i) { const x = a.x + nodeW / 2, off = 40 + Math.abs(a.y - b.y) * 0.15; d = "M" + x + "," + a.y + " C" + (x + off) + "," + a.y + " " + (x + off) + "," + b.y + " " + x + "," + b.y; }
+    else { const dir = b.i > a.i ? 1 : -1, x1 = a.x + dir * nodeW / 2, x2 = b.x - dir * nodeW / 2, mx = (x1 + x2) / 2; d = "M" + x1 + "," + a.y + " C" + mx + "," + a.y + " " + mx + "," + b.y + " " + x2 + "," + b.y; }
+    const p = svgEl("path", { d: d, fill: "none", "stroke-width": 2.2, "stroke-linecap": "round" });
+    p.style.stroke = COLORES_CABLE[c.color] || "#9aa7b4"; if (!up) p.setAttribute("stroke-dasharray", "5 4");
+    p.append(svgEl("title", {}, c.id + " · " + etiquetaCable(c) + " · " + CABLES[c.tipo].nombre + " " + c.longitudM + " m · " + (up ? "UP" : "DOWN")));
+    svg.append(p);
+  });
+  eqs.forEach(e => {
+    const p = pos.get(e.id), g = svgEl("g", {});
+    const rect = svgEl("rect", { x: p.x - nodeW / 2, y: p.y - nodeH / 2, width: nodeW, height: nodeH, rx: 5, "stroke-width": 1.5, "stroke-opacity": 0.5 });
+    rect.style.fill = COLORES_TIPO[e.tipo] || "#4b5563"; rect.style.stroke = "#ffffff";
+    const tx = svgEl("text", { x: p.x, y: p.y + 4, "text-anchor": "middle", "font-size": 11, "font-weight": 600 }, e.nombre + " · U" + e.uInicio); tx.style.fill = "#ffffff";
+    g.append(rect, tx); svg.append(g);
+  });
+  cont.append(svg, el("p", "Líneas continuas = enlace UP · punteadas = DOWN · el color de la línea es el color del cable. Pasa el mouse sobre un cable para ver su etiqueta.", "muted"));
+}
+
+/* ---------- Render: cables ---------- */
+function llenarPuertosLibres(selEq, selP) {
+  const e = equipoPorId(selEq.value), previo = selP.value; selP.replaceChildren();
+  (e ? e.puertos : []).filter(p => !p.cableId).forEach(p => { const o = el("option", "P" + p.n); o.value = String(p.n); selP.append(o); });
+  if (previo && [...selP.options].some(o => o.value === previo)) selP.value = previo;
+}
+function renderFormCable() {
+  const conPuertos = datos.equipos.filter(e => e.puertos.length);
+  ["c-a-eq", "c-b-eq"].forEach(id => {
+    const s = $(id), previo = s.value; s.replaceChildren();
+    conPuertos.forEach(e => { const r = rackPorId(e.rackId), o = el("option", (r ? r.nombre : "?") + " · U" + e.uInicio + " · " + e.nombre); o.value = e.id; s.append(o); });
+    if (previo && conPuertos.some(e => e.id === previo)) s.value = previo;
+  });
+  if ($("c-b-eq").options.length > 1 && $("c-b-eq").value === $("c-a-eq").value && !$("c-b-eq").dataset.tocado) $("c-b-eq").selectedIndex = 1;
+  llenarPuertosLibres($("c-a-eq"), $("c-a-p")); llenarPuertosLibres($("c-b-eq"), $("c-b-p"));
+}
+function iniciarFormCable() {
+  const st = $("c-tipo"); Object.keys(CABLES).forEach(k => { const o = el("option", CABLES[k].nombre + " (máx. " + CABLES[k].maxM + " m)"); o.value = k; st.append(o); }); st.value = "cat6a";
+  const sc = $("c-color"); Object.keys(COLORES_CABLE).forEach(k => { const o = el("option", k.charAt(0).toUpperCase() + k.slice(1)); o.value = k; sc.append(o); }); sc.value = "azul";
+  $("c-a-eq").addEventListener("change", () => llenarPuertosLibres($("c-a-eq"), $("c-a-p")));
+  $("c-b-eq").addEventListener("change", () => { $("c-b-eq").dataset.tocado = "1"; llenarPuertosLibres($("c-b-eq"), $("c-b-p")); });
+  $("form-cable").addEventListener("submit", ev => {
+    ev.preventDefault();
+    const c = { tipo: $("c-tipo").value, longitudM: Number($("c-long").value), color: $("c-color").value,
+      aEq: $("c-a-eq").value, aP: Number($("c-a-p").value), bEq: $("c-b-eq").value, bP: Number($("c-b-p").value) };
+    const err = validarCable(c);
+    if (err) { $("cable-error").textContent = err; return; }
+    $("cable-error").textContent = "";
+    const s = instantanea(); conectarCable(c); registrarSnap(s);
+    const al = revisarAlertas(); guardar(); render(); avisarCriticas(al, "Cable " + c.id + " registrado.");
+  });
+}
+function renderCables() {
+  const tb = $("tbody-cables"); tb.replaceChildren();
+  if (!datos.circuitos.length) { const tr = el("tr"), td = el("td", "Sin cables registrados."); td.colSpan = 7; tr.append(td); tb.append(tr); return; }
+  datos.circuitos.forEach(c => {
+    const tr = el("tr"), up = estadoEnlace(c) === "UP";
+    const tdC = el("td"), sw = el("span", "", "led-estado"); sw.style.backgroundColor = COLORES_CABLE[c.color] || "#9aa7b4"; sw.style.color = COLORES_CABLE[c.color] || "#9aa7b4";
+    tdC.append(sw, document.createTextNode(" " + c.color));
+    const tdL = el("td"); tdL.append(insignia(up ? "UP" : "DOWN", up ? "ok" : "crit"));
+    const tdA = el("td"), b = el("button", "Quitar", "peligro"); b.type = "button"; b.addEventListener("click", () => quitarCable(c.id)); tdA.append(b);
+    tr.append(el("td", c.id), el("td", etiquetaCable(c)), el("td", CABLES[c.tipo].nombre), el("td", c.longitudM + " m"), tdC, tdL, tdA);
+    tb.append(tr);
+  });
+}
+
+/* ---------- Render: inventario / bitácora ---------- */
+function renderInventario() {
+  const tb = $("tbody-inv"); tb.replaceChildren();
+  const filtro = $("f-filtro").value.trim().toLowerCase();
+  datos.equipos.filter(e => {
+    if (!filtro) return true;
+    const r = rackPorId(e.rackId);
+    return [e.nombre, e.tipo, def(e.tipo).nombre, r ? r.nombre : "", e.marca, e.modelo, e.serial, e.ip].join(" ").toLowerCase().includes(filtro);
+  }).forEach(e => {
+    const r = rackPorId(e.rackId), tr = el("tr");
+    tr.append(el("td", r ? r.nombre : "?"), el("td", e.nombre), el("td", def(e.tipo).nombre), el("td", e.uInicio), el("td", e.alturaU), el("td", e.consumoW), el("td", e.pdu || "—"));
+    const tdT = el("td"); tdT.append(iconoTemp(e.tempC, false)); tr.append(tdT);
+    tr.append(el("td", e.puertos.length ? e.puertos.filter(p => p.cableId).length + "/" + e.puertos.length : "—"));
+    const tdE = el("td");
+    tdE.append(el("span", "", "led-estado " + (e.estado === "CONFIRMADO" ? "led-ok" : (e.estado === "INFERENCIA POR VALIDAR" ? "led-warn" : "led-pend"))), document.createTextNode(" "), etiquetaEstado(e.estado));
+    tr.append(tdE);
+    const tdA = el("td"), acc = el("div", "", "acc");
+    const bE = el("button", "Editar", "sec"); bE.type = "button"; bE.addEventListener("click", () => iniciarEdicion(e.id));
+    const bQ = el("button", "Quitar", "peligro"); bQ.type = "button"; bQ.addEventListener("click", () => quitarEquipo(e.id));
+    acc.append(bE, bQ); tdA.append(acc); tr.append(tdA); tb.append(tr);
+  });
+}
+
+function renderBitacora() {
+  const tb = $("tbody-bit"); tb.replaceChildren();
+  const selA = $("f-bit-accion"), previo = selA.value, acciones = [...new Set(datos.bitacora.map(b => b.accion))].sort();
+  selA.replaceChildren();
+  const todas = el("option", "Todas las acciones"); todas.value = ""; selA.append(todas);
+  acciones.forEach(a => { const o = el("option", a); o.value = a; selA.append(o); });
+  selA.value = acciones.indexOf(previo) >= 0 ? previo : "";
+  const txt = $("f-bit-texto").value.trim().toLowerCase(), acc = selA.value;
+  datos.bitacora.slice().reverse().filter(b => (!acc || b.accion === acc) && (!txt || (b.detalle + " " + b.usuario + " " + b.accion).toLowerCase().includes(txt))).slice(0, 100).forEach(b => {
+    const tr = el("tr");
+    tr.append(el("td", new Date(b.fecha).toLocaleString()), el("td", b.usuario || "—"), el("td", b.accion), el("td", b.detalle));
+    tb.append(tr);
+  });
+}
+
+function render() {
+  $("version").textContent = APP_VERSION;
+  renderTarjetas(); renderAlertas(); renderRacksAcordeon(); renderTopologia(); renderFormCable(); renderCables(); renderInventario(); renderBitacora(); botonesUndo();
+  const op = $("f-operador"); if (document.activeElement !== op) op.value = datos.meta.operador;
+}
+function renderSeguro() {
+  const ae = document.activeElement;
+  const editando = ae && (ae.tagName === "INPUT" || ae.tagName === "SELECT" || ae.tagName === "TEXTAREA");
+  if (arrastreInfo || editando) { actualizarGraficas(); return; }
+  render();
+}
+
+/* ---------- Edición de equipos (formulario) ---------- */
+function valoresPorDefectoForm() {
+  $("f-nombre").value = ""; $("f-u").value = ""; $("f-temp").value = ""; $("f-dato").value = "PENDIENTE"; $("f-pdu").value = "";
+  ["f-marca", "f-modelo", "f-serial", "f-ip", "f-mac", "f-resp", "f-garantia"].forEach(id => { $(id).value = ""; });
+  prefijarPorTipo();
+}
+function prefijarPorTipo() {
+  const df = def($("f-tipo").value);
+  $("f-alto").value = df.alto; $("f-w").value = df.w; $("f-peso").value = df.kg; $("f-prof").value = 450;
+}
+function salirEdicion() {
+  editandoId = null; $("form-titulo").textContent = "Agregar dispositivo manualmente"; $("btn-guardar").textContent = "Registrar dispositivo";
+  $("btn-cancelar").hidden = true; $("form-error").textContent = ""; valoresPorDefectoForm();
+}
+function iniciarEdicion(id) {
+  const e = equipoPorId(id); if (!e) return;
+  editandoId = id;
+  $("f-rack").value = e.rackId; $("f-nombre").value = e.nombre; $("f-tipo").value = e.tipo; $("f-u").value = e.uInicio; $("f-alto").value = e.alturaU;
+  $("f-w").value = e.consumoW; $("f-temp").value = e.tempC; $("f-dato").value = e.estado; $("f-pdu").value = e.pdu;
+  $("f-marca").value = e.marca; $("f-modelo").value = e.modelo; $("f-serial").value = e.serial; $("f-ip").value = e.ip; $("f-mac").value = e.mac;
+  $("f-resp").value = e.responsable; $("f-garantia").value = e.garantia; $("f-peso").value = e.pesoKg; $("f-prof").value = e.profMm;
+  $("form-titulo").textContent = "Editando «" + e.nombre + "»"; $("btn-guardar").textContent = "Guardar cambios"; $("btn-cancelar").hidden = false; $("form-error").textContent = "";
+  $("form-equipo").scrollIntoView({ behavior: "smooth", block: "center" }); $("f-nombre").focus();
+}
+function enviarFormEquipo(ev) {
+  ev.preventDefault();
+  const tipo = $("f-tipo").value, tRaw = $("f-temp").value.trim();
+  const vals = {
+    rackId: $("f-rack").value, nombre: $("f-nombre").value.trim() || "Dispositivo", tipo: tipo,
+    uInicio: Number($("f-u").value) || 1, alturaU: Number($("f-alto").value) || 1, consumoW: Number($("f-w").value) || 0,
+    tempC: tRaw === "" ? tempBase(tipo) : Number(tRaw), estado: $("f-dato").value, pdu: $("f-pdu").value,
+    marca: $("f-marca").value.trim(), modelo: $("f-modelo").value.trim(), serial: $("f-serial").value.trim(), ip: $("f-ip").value.trim(), mac: $("f-mac").value.trim(),
+    responsable: $("f-resp").value.trim(), garantia: $("f-garantia").value, pesoKg: Number($("f-peso").value) || 0, profMm: Number($("f-prof").value) || 450
+  };
+  if (editandoId) {
+    const e = equipoPorId(editandoId); if (!e) { salirEdicion(); return; }
+    const cand = Object.assign({}, e, vals);
+    const error = validarEquipo(cand, e.id) || validarActivo(cand);
+    if (error) { $("form-error").textContent = error; return; }
+    if (cand.tipo !== e.tipo && e.puertos.some(p => p.cableId)) { $("form-error").textContent = "Desconecta los cables del equipo antes de cambiar su tipo."; return; }
+    const s = instantanea();
+    if (cand.tipo !== e.tipo) { cand.puertos = crearPuertos(cand.tipo); if (cand.tipo === "ups") { cand.capacidadW = cand.capacidadW || 1500; cand.bateriaPct = numOr(cand.bateriaPct, 100); } }
+    Object.assign(e, cand); registrarSnap(s);
+    bitacora("edición", e.id, "Datos de «" + e.nombre + "» actualizados");
+    const al = revisarAlertas(); guardar(); salirEdicion(); render(); avisarCriticas(al, "Dispositivo actualizado.");
+    return;
+  }
+  const nuevo = Object.assign(nuevoEquipo(vals.rackId, tipo, vals.uInicio, vals.nombre), vals);
+  const error = validarEquipo(nuevo) || validarActivo(nuevo);
+  if (error) { $("form-error").textContent = error; return; }
+  $("form-error").textContent = "";
+  const s = instantanea(); datos.equipos.push(nuevo); registrarSnap(s);
+  bitacora("alta", nuevo.id, "Registro manual de «" + nuevo.nombre + "»");
+  const al = revisarAlertas(); guardar(); render(); avisarCriticas(al, "Dispositivo registrado con éxito.");
+}
+
+/* ---------- Telemetría: simulación y datos reales ---------- */
+function tickTelemetria() {
+  datos.racks.forEach(r => {
+    const pot = potenciaRack(r), cap = r.capacidadW || CAPACIDAD_RACK_W;
+    r.tempC = round1(clamp(r.tempC + (21 + pot / cap * 10 - r.tempC) * 0.2 + (Math.random() - 0.5), 15, 45));
+    r.tempSalidaC = round1(clamp(r.tempSalidaC + (r.tempC + 6 + pot / cap * 10 - r.tempSalidaC) * 0.2 + (Math.random() - 0.5), 15, 60));
+    r.humedadPct = round1(clamp(r.humedadPct + (50 - r.humedadPct) * 0.1 + (Math.random() - 0.5) * 2, 10, 90));
+  });
+  datos.equipos.forEach(e => {
+    const r = rackPorId(e.rackId), df = def(e.tipo);
+    if (df.carga > 0) e.cargaPct = round1(clamp(e.cargaPct + (df.carga - e.cargaPct) * 0.15 + (Math.random() - 0.5) * 12, 5, 100));
+    const obj = df.temp + ((r ? r.tempC : TEMP_AMBIENTE) - TEMP_AMBIENTE) * 0.8 + (df.carga > 0 ? (e.cargaPct - df.carga) * 0.12 : 0);
+    e.tempC = round1(clamp(e.tempC + (obj - e.tempC) * 0.25 + (Math.random() - 0.5) * 1.5, 15, 90));
+  });
+  const al = revisarAlertas(); guardar(); renderSeguro();
+  if (al.length) avisarCriticas(al);
+}
+
+function buscarRack(ref) {
+  if (typeof ref !== "string") return null;
+  const s = ref.toLowerCase();
+  return datos.racks.find(r => r.id.toLowerCase() === s || r.nombre.toLowerCase() === s) || null;
+}
+function aplicarLectura(o) {
+  if (!o || typeof o !== "object" || Array.isArray(o)) return 0;
+  let n = 0;
+  const rack = buscarRack(o.rack);
+  if (o.equipo === undefined) {
+    if (!rack) return 0;
+    [["tempEntrada", "tempC", TEMP_MIN, TEMP_MAX], ["tempSalida", "tempSalidaC", TEMP_MIN, TEMP_MAX], ["humedad", "humedadPct", 0, 100]].forEach(x => {
+      const v = o[x[0]];
+      if (typeof v === "number" && isFinite(v) && v >= x[2] && v <= x[3]) { rack[x[1]] = round1(v); n++; }
+    });
+    if (o.puerta === "abierta" || o.puerta === "cerrada") { rack.puerta = o.puerta; n++; }
+    ["humo", "agua"].forEach(k => { if (o[k] === "OK" || o[k] === "ALARMA") { rack[k] = o[k]; n++; } });
+  } else {
+    const ref = String(o.equipo).toLowerCase();
+    const e = datos.equipos.find(x => (x.id.toLowerCase() === ref || x.nombre.toLowerCase() === ref) && (!rack || x.rackId === rack.id));
+    if (!e) return 0;
+    if (tempValida(o.tempC)) { e.tempC = round1(o.tempC); n++; }
+    if (typeof o.cargaPct === "number" && o.cargaPct >= 0 && o.cargaPct <= 100) { e.cargaPct = round1(o.cargaPct); n++; }
+    if (e.tipo === "ups" && typeof o.bateriaPct === "number" && o.bateriaPct >= 0 && o.bateriaPct <= 100) { e.bateriaPct = round1(o.bateriaPct); n++; }
+    if (o.puertos && typeof o.puertos === "object") {
+      Object.keys(o.puertos).forEach(k => {
+        const p = puerto(e, Number(k)), v = o.puertos[k];
+        if (p && (v === "down" || (v === "up" && p.cableId))) { p.estado = v; n++; }
+      });
+    }
+  }
+  return n;
+}
+function procesarMensaje(txt) {
+  let o; try { o = JSON.parse(txt); } catch (e) { return -1; }
+  const lista = Array.isArray(o) ? o.slice(0, 200) : [o];
+  let n = 0; lista.forEach(x => { n += aplicarLectura(x); });
+  if (n > 0) { const al = revisarAlertas(); guardar(); renderSeguro(); if (al.length) avisarCriticas(al); }
+  return n;
+}
+function estadoWS(txt, error) { const p = $("ws-estado"); p.textContent = txt; p.style.color = error ? "var(--pend)" : ""; }
+function desconectarWS() { if (ws) { try { ws.close(); } catch (e) {} ws = null; } estadoWS("Desconectado.", false); }
+function conectarWS() {
+  const url = $("t-url").value.trim();
+  if (!/^wss?:\/\/\S+$/i.test(url)) { estadoWS("La URL debe empezar por ws:// o wss://", true); return; }
+  desconectarWS();
+  try { ws = new WebSocket(url); } catch (e) { estadoWS("No se pudo abrir la conexión: " + e.message, true); return; }
+  estadoWS("Conectando…", false);
+  ws.onopen = () => { estadoWS("Conectado a " + url, false); bitacora("telemetría", "", "Conectado a la fuente en vivo " + url); guardar(); };
+  ws.onmessage = ev => { if (typeof ev.data === "string" && ev.data.length <= 20000) procesarMensaje(ev.data); };
+  ws.onerror = () => estadoWS("Error de conexión (revisa la URL y si la página es HTTPS, usa wss://).", true);
+  ws.onclose = () => { if (ws) { ws = null; estadoWS("Conexión cerrada.", false); } };
+}
+
+/* ---------- Exportar / importar ---------- */
+function descargar(nombre, mime, contenido) {
+  const blob = new Blob([contenido], { type: mime }), url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = nombre; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function sello() { return new Date().toISOString().slice(0, 16).replace(/[-:T]/g, ""); }
+function csvCelda(v) {
+  let s = v === undefined || v === null ? "" : String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return /[",\n\r;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function csv(filas) { return "\uFEFF" + filas.map(f => f.map(csvCelda).join(",")).join("\r\n"); }
+function exportarCSV(nombre, filas) { descargar("rack-" + nombre + "-" + sello() + ".csv", "text/csv;charset=utf-8", csv(filas)); mensaje("CSV «" + nombre + "» exportado.", false); }
+function csvInventario() {
+  return [["Rack", "Nombre", "Tipo", "U inicial", "Alto U", "Consumo W", "Carga %", "Temp °C", "PDU", "Marca", "Modelo", "Serial", "IP", "MAC", "Responsable", "Garantía", "Peso kg", "Prof. mm", "Estado", "Puertos con cable", "Puertos totales"]]
+    .concat(datos.equipos.map(e => { const r = rackPorId(e.rackId); return [r ? r.nombre : "", e.nombre, def(e.tipo).nombre, e.uInicio, e.alturaU, e.consumoW, e.cargaPct, e.tempC, e.pdu, e.marca, e.modelo, e.serial, e.ip, e.mac, e.responsable, e.garantia, e.pesoKg, e.profMm, e.estado, e.puertos.filter(p => p.cableId).length, e.puertos.length]; }));
+}
+function csvCables() {
+  return [["ID", "Tipo", "Longitud m", "Color", "Extremo A", "Puerto A", "Extremo B", "Puerto B", "Enlace", "Etiqueta"]]
+    .concat(datos.circuitos.map(c => { const A = equipoPorId(c.aEq), B = equipoPorId(c.bEq); return [c.id, CABLES[c.tipo].nombre, c.longitudM, c.color, A ? A.nombre : "", c.aP, B ? B.nombre : "", c.bP, estadoEnlace(c), etiquetaCable(c)]; }));
+}
+function csvBitacora() { return [["Fecha", "Usuario", "Acción", "Referencia", "Detalle"]].concat(datos.bitacora.map(b => [b.fecha, b.usuario, b.accion, b.entidadRef, b.detalle])); }
+function csvAlertas() { return [["Fecha", "Severidad", "Origen", "Mensaje", "Reconocida", "Reconocida por", "Resuelta", "Fecha resolución"]].concat(datos.alertas.map(a => [a.fecha, a.sev, a.origen, a.msg, a.ack ? "sí" : "no", a.ackPor, a.resuelta ? "sí" : "no", a.fechaResuelta])); }
+function csvHistorial() {
+  const filas = [["Rack", "Fecha", "Temp entrada °C", "Temp salida °C", "Equipo más caliente °C", "Humedad %", "Carga promedio %", "Potencia % capacidad"]];
+  datos.racks.forEach(r => (datos.historial[r.id] || []).forEach(p => filas.push([r.nombre, new Date(p.t).toISOString(), p.temp, p.tsal, p.tmax, p.hum, p.carga, p.pot])));
+  return filas;
+}
+
+/* ---------- Laboratorio de ejemplo ---------- */
+function cargarEjemplo() {
+  if (!confirm("Se reemplazarán los equipos y cables actuales por un laboratorio de ejemplo (3 racks con switches, routers, patch panels, UPS, PDU y cables). ¿Continuar?")) return;
+  const s = instantanea();
+  datos.equipos = []; datos.circuitos = []; datos.meta.contadorCable = 0; seleccionId = null; seleccionMulti.clear(); selPuerto = null;
+  let serie = 0;
+  datos.racks.slice(0, 3).forEach((rack, idx) => {
+    const R = idx + 1, mk = (tipo, u, extra) => {
+      const e = nuevoEquipo(rack.id, tipo, u, nombreLibre(rack.id, tipo));
+      e.estado = "EJEMPLO DIDÁCTICO"; serie++; e.marca = "Ejemplo"; e.serial = "EJ-" + String(serie).padStart(4, "0"); e.ip = def(tipo).puertos || tipo === "ups" ? "10." + R + ".0." + serie : "";
+      e.mac = def(tipo).puertos ? "02:00:00:0" + R + ":00:" + (serie < 16 ? "0" : "") + serie.toString(16).toUpperCase() : ""; e.responsable = "Laboratorio";
+      Object.assign(e, extra || {}); datos.equipos.push(e); return e;
+    };
+    const pp = mk("patchpanel", 42, { modelo: "PP-24-Cat6A" });
+    mk("organizador", 41);
+    const sw1 = mk("switch", 40, { modelo: "SW-24G-PoE", pdu: "A", consumoW: 150 });
+    const sw2 = mk("switch", 39, { modelo: "SW-24G", pdu: "B" });
+    const r1 = mk("router", 38, { modelo: "RT-4G", pdu: "A" });
+    const r2 = mk("router", 37, { modelo: "RT-4G", pdu: "B" });
+    mk("ciego", 36); mk("ciego", 35);
+    let fw = null, srv = null;
+    if (R === 1) { fw = mk("firewall", 34, { modelo: "FW-6G", pdu: "A+B" }); srv = mk("servidor", 32, { modelo: "SRV-2U", pdu: "A+B" }); mk("odf", 31, { modelo: "ODF-12-LC" }); }
+    mk("pdu", 4, { nombre: "PDU A" }); mk("pdu", 3, { nombre: "PDU B" });
+    mk("ups", 1, { modelo: "UPS-1500", bateriaPct: 100, capacidadW: 1500 });
+    const cab = (tipo, color, m, A, pa, B, pb) => { const c = { tipo: tipo, longitudM: m, color: color, aEq: A.id, aP: pa, bEq: B.id, bP: pb }; if (!validarCable(c)) conectarCable(c); };
+    for (let i = 1; i <= 8; i++) cab("cat6a", "azul", 1.5, pp, i, sw1, i);
+    cab("cat6a", "rojo", 1, sw1, 23, sw2, 23); cab("cat6a", "amarillo", 1, sw1, 24, r1, 1); cab("cat6a", "amarillo", 1, sw2, 24, r2, 1);
+    if (fw) cab("cat6a", "naranja", 1, fw, 1, r1, 2);
+    if (srv) cab("cat6a", "verde", 1.5, srv, 1, sw2, 1);
+  });
+  for (let i = 0; i < 2; i++) {
+    const A = datos.equipos.find(e => e.rackId === datos.racks[i].id && e.tipo === "switch"), B = datos.equipos.find(e => e.rackId === datos.racks[i + 1].id && e.tipo === "switch");
+    if (A && B) { const c = { tipo: "om4", longitudM: 12, color: "aqua", aEq: A.id, aP: 21, bEq: B.id, bP: 22 }; if (!validarCable(c)) conectarCable(c); }
+  }
+  registrarSnap(s);
+  bitacora("ejemplo", "", "Laboratorio de ejemplo cargado: " + datos.equipos.length + " equipos, " + datos.circuitos.length + " cables");
+  rastroAbiertos.add(datos.racks[0].id);
+  revisarAlertas(); guardar(); render(); mensaje("Laboratorio de ejemplo cargado (puedes deshacerlo con Ctrl+Z).", false);
+}
+
+/* ---------- Reporte imprimible ---------- */
+function tablaDe(cab, filas) {
+  const t = el("table"), th = el("thead"), tr = el("tr");
+  cab.forEach(c => tr.append(el("th", c))); th.append(tr); t.append(th);
+  const tb = el("tbody"); filas.forEach(f => { const r = el("tr"); f.forEach(c => r.append(el("td", c))); tb.append(r); }); t.append(tb);
+  return t;
+}
+function construirReporte() {
+  const rep = $("reporte"); rep.replaceChildren();
+  const logo = el("div"); logo.innerHTML = LOGO_IMPRESION; rep.append(logo);
+  rep.append(el("h1", "Reporte del Datacenter · RACK ORDEN Y SEGURIDAD"));
+  rep.append(el("p", "Generado: " + new Date().toLocaleString() + " · Operador: " + (datos.meta.operador || "—") + " · Versión " + APP_VERSION));
+  rep.append(el("h2", "Resumen por rack"));
+  rep.append(tablaDe(["Rack", "U usadas", "Potencia W", "BTU/h", "Peso kg", "Entrada °C", "Salida °C", "ΔT", "Humedad %", "Puerta", "Humo", "Agua"],
+    datos.racks.map(r => [r.nombre, unidadesOcupadas(r) + "/" + r.alturaU, Math.round(potenciaRack(r)), Math.round(potenciaRack(r) * BTU_POR_W), txtNum(pesoRack(r)) + "/" + r.cargaMaxKg,
+      txtNum(r.tempC), txtNum(r.tempSalidaC), txtNum(r.tempSalidaC - r.tempC), txtNum(r.humedadPct), r.puerta, r.humo, r.agua])));
+  rep.append(el("h2", "Inventario"));
+  rep.append(tablaDe(["Rack", "U", "Equipo", "Tipo", "Marca / modelo", "Serial", "IP", "W", "°C", "PDU", "Garantía", "Estado"],
+    datos.equipos.slice().sort((a, b) => a.rackId.localeCompare(b.rackId) || b.uInicio - a.uInicio).map(e => { const r = rackPorId(e.rackId);
+      return [r ? r.nombre : "", e.uInicio + (e.alturaU > 1 ? "-" + topeU(e) : ""), e.nombre, def(e.tipo).nombre, (e.marca + " " + e.modelo).trim(), e.serial, e.ip, e.consumoW, txtNum(e.tempC), e.pdu, e.garantia, e.estado]; })));
+  rep.append(el("h2", "Cableado"));
+  rep.append(tablaDe(["ID", "Etiqueta", "Tipo", "Largo", "Color", "Enlace"], datos.circuitos.map(c => [c.id, etiquetaCable(c), CABLES[c.tipo].nombre, c.longitudM + " m", c.color, estadoEnlace(c)])));
+  rep.append(el("h2", "Alertas activas"));
+  const act = datos.alertas.filter(a => !a.resuelta);
+  rep.append(act.length ? tablaDe(["Fecha", "Severidad", "Mensaje", "Reconocida"], act.map(a => [new Date(a.fecha).toLocaleString(), a.sev, a.msg, a.ack ? "sí (" + a.ackPor + ")" : "no"])) : el("p", "Sin alertas activas."));
+}
+
+/* ---------- Autopruebas ---------- */
+function ejecutarPruebas() {
+  const resultados = [], respaldo = datos;
+  const prueba = (nombre, fn) => { try { const r = fn(); resultados.push([nombre, r === true, r === true ? "" : String(r)]); } catch (e) { resultados.push([nombre, false, e.message]); } };
+  try {
+    datos = estadoInicial();
+    const rack = datos.racks[0];
+    const base = (o) => Object.assign(nuevoEquipo(rack.id, "switch", 10, "A"), o);
+    datos.equipos.push(base({ id: "t1", uInicio: 10, alturaU: 2 }));
+    prueba("Detecta solapamiento de U", () => !!validarEquipo(base({ id: "t2", uInicio: 11 })));
+    prueba("Permite U contiguas libres", () => validarEquipo(base({ id: "t3", uInicio: 12 })) === null);
+    prueba("Rechaza equipo fuera de la altura del rack", () => !!validarEquipo(base({ id: "t4", uInicio: 42, alturaU: 2 })));
+    prueba("Rechaza temperatura fuera de rango", () => !!validarEquipo(base({ id: "t5", uInicio: 20, tempC: 500 })));
+    prueba("Rechaza equipo más profundo que el rack", () => !!validarEquipo(base({ id: "t6", uInicio: 20, profMm: 1200 })));
+    prueba("Umbrales de temperatura de rack", () => nivelTemp(27, true) === "ok" && nivelTemp(27.1, true) === "warn" && nivelTemp(32, true) === "crit");
+    prueba("Umbrales de humedad y ΔT", () => nivelHumedad(50) === "ok" && nivelHumedad(35) === "warn" && nivelHumedad(15) === "crit" && nivelDelta(10) === "ok" && nivelDelta(16) === "warn" && nivelDelta(20) === "crit");
+    prueba("Conversión W → BTU/h", () => Math.abs(1000 * BTU_POR_W - 3412) < 1);
+    const A = datos.equipos[0], B = nuevoEquipo(rack.id, "patchpanel", 30, "PP"); datos.equipos.push(B);
+    prueba("Cable válido es aceptado", () => validarCable({ tipo: "cat6a", longitudM: 2, color: "azul", aEq: A.id, aP: 1, bEq: B.id, bP: 1 }) === null);
+    prueba("Cable Cat6A de 150 m es rechazado", () => !!validarCable({ tipo: "cat6a", longitudM: 150, color: "azul", aEq: A.id, aP: 1, bEq: B.id, bP: 1 }));
+    prueba("Puerto inexistente es rechazado", () => !!validarCable({ tipo: "cat6a", longitudM: 2, color: "azul", aEq: A.id, aP: 99, bEq: B.id, bP: 1 }));
+    A.puertos[0].cableId = "X";
+    prueba("Puerto ocupado es rechazado", () => !!validarCable({ tipo: "cat6a", longitudM: 2, color: "azul", aEq: A.id, aP: 1, bEq: B.id, bP: 1 }));
+    A.puertos[0].cableId = "";
+    prueba("CSV neutraliza fórmulas", () => csvCelda("=1+1") === "'=1+1");
+    prueba("CSV escapa comas y comillas", () => csvCelda('a,"b"') === '"a,""b"""');
+    prueba("Exportar → importar conserva la estructura", () => { const copia = normalizar(JSON.parse(JSON.stringify(datos))); return datosValidos(copia) && estructuraOk(copia) && copia.equipos.length === datos.equipos.length; });
+    prueba("Importación con rack inexistente es rechazada", () => { const mala = JSON.parse(JSON.stringify(datos)); mala.equipos[0].rackId = "no-existe"; return estructuraOk(mala) === false; });
+    prueba("Alarma de humo genera alerta crítica", () => { rack.humo = "ALARMA"; const r = condiciones().some(c => c.sev === "crit" && c.clave === "hm:" + rack.id); rack.humo = "OK"; return r; });
+    prueba("Humedad fuera de rango genera alerta", () => { rack.humedadPct = 85; const r = condiciones().some(c => c.clave === "hu:" + rack.id && c.sev === "crit"); rack.humedadPct = 50; return r; });
+  } finally { datos = respaldo; }
+  const ok = resultados.filter(r => r[1]).length, panel = $("resultado-pruebas");
+  panel.hidden = false; panel.replaceChildren();
+  panel.append(el("strong", "Autopruebas: " + ok + " de " + resultados.length + " correctas"));
+  const ul = el("ul");
+  resultados.forEach(r => ul.append(el("li", (r[1] ? "✔ " : "✘ ") + r[0] + (r[2] ? " — " + r[2] : ""))));
+  panel.append(ul);
+  bitacora("autopruebas", "", ok + "/" + resultados.length + " pruebas correctas"); guardar(); renderBitacora();
+  mensaje(ok === resultados.length ? "Todas las autopruebas pasaron." : "Hay autopruebas con fallos; revisa el panel.", ok !== resultados.length);
+  return resultados;
+}
+
+/* ---------- Eventos ---------- */
+$("btn-sim").addEventListener("click", () => {
+  const btn = $("btn-sim");
+  if (simTimer) { clearInterval(simTimer); simTimer = null; btn.setAttribute("aria-pressed", "false"); btn.textContent = "Simular telemetría: OFF"; mensaje("Simulación detenida.", false); }
+  else { simTimer = setInterval(tickTelemetria, 4000); btn.setAttribute("aria-pressed", "true"); btn.textContent = "Simular telemetría: ON"; mensaje("Simulación activa: las lecturas varían cada 4 s según la carga.", false); }
+});
+$("btn-undo").addEventListener("click", deshacer);
+$("btn-redo").addEventListener("click", rehacer);
+$("btn-imprimir").addEventListener("click", () => { construirReporte(); window.print(); });
+$("f-operador").addEventListener("change", () => { datos.meta.operador = $("f-operador").value.trim().slice(0, 40); guardar(); mensaje("Operador: " + (datos.meta.operador || "anónimo"), false); });
+$("f-tipo").addEventListener("change", () => { if (!editandoId) prefijarPorTipo(); });
+$("form-equipo").addEventListener("submit", enviarFormEquipo);
+$("btn-cancelar").addEventListener("click", salirEdicion);
+$("f-filtro").addEventListener("input", renderInventario);
+$("f-alertas-filtro").addEventListener("change", renderAlertas);
+$("f-bit-texto").addEventListener("input", renderBitacora);
+$("f-bit-accion").addEventListener("change", renderBitacora);
+$("btn-ack-todas").addEventListener("click", () => {
+  const act = datos.alertas.filter(a => !a.resuelta && !a.ack);
+  if (!act.length) { mensaje("No hay alertas por reconocer.", false); return; }
+  act.forEach(reconocer); guardar(); render(); mensaje(act.length + " alertas reconocidas.", false);
+});
+$("form-nota").addEventListener("submit", ev => {
+  ev.preventDefault(); const txt = $("f-nota").value.trim(); if (!txt) return;
+  bitacora("nota", "", txt); guardar(); $("f-nota").value = ""; render(); mensaje("Nota guardada en la bitácora del NOC.", false);
+});
+$("btn-ws-conectar").addEventListener("click", conectarWS);
+$("btn-ws-desconectar").addEventListener("click", desconectarWS);
+$("btn-json-aplicar").addEventListener("click", () => {
+  const n = procesarMensaje($("t-json").value.trim());
+  mensaje(n < 0 ? "El texto no es un JSON válido." : (n === 0 ? "La lectura no coincidió con ningún rack o equipo, o sus valores están fuera de rango." : n + " valores aplicados."), n <= 0);
+});
+$("btn-exp-json").addEventListener("click", () => { descargar("rack-orden-seguridad-" + sello() + ".json", "application/json", JSON.stringify(datos, null, 2)); mensaje("Respaldo JSON exportado.", false); });
+$("btn-imp-json").addEventListener("click", () => $("f-import").click());
+$("f-import").addEventListener("change", async ev => {
+  const f = ev.target.files[0]; ev.target.value = ""; if (!f) return;
+  if (f.size > 5 * 1024 * 1024) { mensaje("El archivo supera 5 MB.", true); return; }
+  let parsed; try { parsed = JSON.parse(await f.text()); } catch (e) { mensaje("El archivo no es un JSON válido.", true); return; }
+  if (!estructuraOk(parsed)) { mensaje("El JSON no tiene la estructura esperada (esquema v" + SCHEMA_VERSION + ", racks y equipos coherentes).", true); return; }
+  if (!confirm("Se reemplazarán los datos actuales por los del archivo (" + parsed.racks.length + " racks, " + parsed.equipos.length + " equipos). Puedes deshacerlo con Ctrl+Z. ¿Continuar?")) return;
+  const s = instantanea(), operador = datos.meta.operador;
+  datos = normalizar(parsed); if (!datos.meta.operador) datos.meta.operador = operador;
+  registrarSnap(s); seleccionId = null; seleccionMulti.clear(); selPuerto = null; editandoId = null;
+  bitacora("importación", "", "Datos importados desde «" + String(f.name).slice(0, 60) + "»");
+  revisarAlertas(true); guardar(); render(); mensaje("Datos importados correctamente.", false);
+});
+$("btn-csv-inv").addEventListener("click", () => exportarCSV("inventario", csvInventario()));
+$("btn-csv-cab").addEventListener("click", () => exportarCSV("cables", csvCables()));
+$("btn-csv-bit").addEventListener("click", () => exportarCSV("bitacora", csvBitacora()));
+$("btn-csv-ale").addEventListener("click", () => exportarCSV("alertas", csvAlertas()));
+$("btn-csv-his").addEventListener("click", () => exportarCSV("historial", csvHistorial()));
+$("btn-ejemplo").addEventListener("click", cargarEjemplo);
+$("btn-pruebas").addEventListener("click", ejecutarPruebas);
+$("btn-hist").addEventListener("click", () => {
+  if (!confirm("¿Borrar el historial de lecturas de todos los racks? (No afecta equipos, cables ni bitácora)")) return;
+  datos.historial = {}; bitacora("historial", "", "Historial de lecturas limpiado"); guardar(); render(); mensaje("Historial de lecturas limpiado.", false);
+});
+$("btn-inicial").addEventListener("click", () => {
+  if (!confirm("¿Restablecer TODA la base de datos (racks, equipos, cables, alertas, bitácora e historial)? Esta acción no se puede deshacer; exporta un respaldo antes si lo necesitas.")) return;
+  const operador = datos.meta.operador;
+  datos = estadoInicial(); datos.meta.operador = operador;
+  rastroAbiertos.clear(); seleccionId = null; seleccionMulti.clear(); selPuerto = null; editandoId = null; undoStack = []; redoStack = [];
+  revisarAlertas(true); guardar(); render();
+});
+$("btn-vaciar").addEventListener("click", () => {
+  if (!confirm("¿Purgar todos los dispositivos de los racks? También se eliminan sus cables. Puedes deshacerlo con Ctrl+Z.")) return;
+  const s = instantanea(); datos.equipos = []; datos.circuitos = []; registrarSnap(s);
+  seleccionId = null; seleccionMulti.clear(); selPuerto = null;
+  bitacora("vaciado", "", "Purgado general del datacenter"); revisarAlertas(); guardar(); render();
+});
+document.addEventListener("keydown", ev => {
+  const t = ev.target, escribiendo = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT");
+  if (escribiendo || !(ev.ctrlKey || ev.metaKey)) return;
+  const k = ev.key.toLowerCase();
+  if (k === "z" && !ev.shiftKey) { ev.preventDefault(); deshacer(); }
+  else if (k === "y" || (k === "z" && ev.shiftKey)) { ev.preventDefault(); rehacer(); }
+});
+
+/* ---------- Inicio ---------- */
+$("logo").innerHTML = LOGO_SVG;
+document.documentElement.style.setProperty("--marca", 'url("data:image/svg+xml;utf8,' + encodeURIComponent(LOGO_SVG) + '")');
+(function poblarTipos() {
+  const s = $("f-tipo"); Object.keys(TIPOS_DEF).forEach(k => { const o = el("option", TIPOS_DEF[k].nombre); o.value = k; s.append(o); });
+  s.value = "switch";
+})();
+iniciarPapelera();
+iniciarFormCable();
+datos = cargar();
+valoresPorDefectoForm();
+revisarAlertas(true);
+if (datos.racks.length > 0) rastroAbiertos.add(datos.racks[0].id);
+muestrear();
+render();
+setInterval(() => { muestrear(); guardar(); actualizarGraficas(); }, MUESTREO_MS);
+</script>
+</body>
+</html>
