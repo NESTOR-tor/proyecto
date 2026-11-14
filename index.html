@@ -181,6 +181,18 @@
 #noc-ai .noc-foot { color:var(--muted); font-size:.78rem; padding:0 1rem 1rem; }
 @media(max-width:760px) { #noc-ai .noc-grid { grid-template-columns:1fr; } #noc-ai .noc-compose { flex-wrap:wrap; } }
 
+
+/* Motor de políticas administrativas (módulo adicional) */
+#policy-launch{position:fixed;right:18px;bottom:18px;z-index:9998;box-shadow:0 5px 24px #0009}
+#policy-panel{position:fixed;inset:0;z-index:9999;background:#05090fd9;display:none;align-items:center;justify-content:center;padding:16px}
+#policy-panel.open{display:flex}
+#policy-card{width:min(900px,100%);max-height:90vh;overflow:auto;background:#161b22;border:1px solid #4da3ff;border-radius:12px;padding:20px;box-shadow:0 20px 70px #000b}
+#policy-card h2{margin-top:0}#policy-card input,#policy-card textarea{width:100%;margin:.25rem 0 .7rem}
+.policy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.policy-item{border:1px solid var(--borde);border-radius:8px;padding:12px;margin:8px 0;background:var(--panel2)}
+.policy-item small{color:var(--muted)}.policy-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.policy-lock{color:#ffb4ab}.policy-ok{color:#56d364}
+
 </style>
 </head>
 <body>
@@ -437,6 +449,29 @@ También se acepta un arreglo de lecturas. Se ignoran los campos fuera de rango.
 </section>
 
 </main>
+
+
+<button type="button" id="policy-launch">🔐 Administración de políticas <span id="policy-count">0</span></button>
+<div id="policy-panel" role="dialog" aria-modal="true" aria-labelledby="policy-title">
+ <div id="policy-card">
+  <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap"><h2 id="policy-title">Motor de políticas · Administrador</h2><button type="button" class="sec" id="policy-close">Cerrar</button></div>
+  <p id="policy-status" class="muted">Las operaciones sensibles requieren aprobación administrativa.</p>
+  <section id="policy-setup" hidden>
+   <h3>Configurar PIN del administrador</h3><p class="muted">Crea un PIN de 6 a 12 dígitos. Se guardará en este navegador.</p>
+   <label for="policy-newpin">Nuevo PIN</label><input id="policy-newpin" type="password" inputmode="numeric" minlength="6" maxlength="12" autocomplete="new-password">
+   <label for="policy-newpin2">Confirmar PIN</label><input id="policy-newpin2" type="password" inputmode="numeric" minlength="6" maxlength="12" autocomplete="new-password">
+   <button type="button" id="policy-savepin">Crear PIN administrador</button>
+  </section>
+  <section id="policy-login" hidden><h3>Desbloquear administración</h3><label for="policy-pin">PIN administrador</label><input id="policy-pin" type="password" inputmode="numeric" maxlength="12" autocomplete="current-password"><button type="button" id="policy-unlock">Desbloquear</button></section>
+  <section id="policy-admin" hidden>
+   <div class="policy-grid"><div class="policy-item"><strong>Control activo</strong><p class="policy-ok">Aprobación obligatoria</p></div><div class="policy-item"><strong>Solicitudes pendientes</strong><p id="policy-pending-number">0</p></div><div class="policy-item"><strong>Administrador</strong><p>Sesión local desbloqueada</p></div></div>
+   <h3>Solicitudes de autorización</h3><div id="policy-requests"></div>
+   <h3>Registro de auditoría</h3><div id="policy-audit"></div>
+   <div class="policy-actions"><button type="button" class="sec" id="policy-lock">Bloquear administrador</button><button type="button" class="sec" id="policy-export">Exportar auditoría</button></div>
+  </section>
+  <p class="muted policy-lock">Importante: este PIN es una barrera local de uso, no una identidad verificada. Los controles no se sincronizan entre navegadores o computadores.</p>
+ </div>
+</div>
 
 <div id="reporte" class="solo-impresion" aria-hidden="true"></div>
 
@@ -1979,6 +2014,73 @@ function ejecutarPruebas() {
   mensaje(ok === resultados.length ? "Todas las autopruebas pasaron." : "Hay autopruebas con fallos; revisa el panel.", ok !== resultados.length);
   return resultados;
 }
+
+
+/* ---------- MOTOR DE POLÍTICAS: extensión independiente ---------- */
+const POLICY_KEY = "consola-racks.policy.v1";
+let policyConfig = null, policyUnlocked = false, policyBypass = false;
+let policyQueue = [], policyAudit = [];
+try { policyConfig = JSON.parse(localStorage.getItem(POLICY_KEY) || "null"); } catch (_) { policyConfig = null; }
+if (!policyConfig || typeof policyConfig !== "object") policyConfig = { pin: "", createdAt: "" };
+function policyPersist(){ try { localStorage.setItem(POLICY_KEY, JSON.stringify({pin:policyConfig.pin,createdAt:policyConfig.createdAt,audit:policyAudit.slice(-300)})); } catch(_){} }
+if (Array.isArray(policyConfig.audit)) policyAudit = policyConfig.audit.slice(-300);
+function policyHash(v){ let h=2166136261; for(let i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619);} return (h>>>0).toString(16); }
+function policyLog(tipo, detalle){ policyAudit.unshift({fecha:new Date().toISOString(),tipo,detalle:String(detalle||"").slice(0,500),operador:(datos.meta.operador||"Sin identificar")}); policyAudit=policyAudit.slice(0,300); policyPersist(); }
+function policyRender(){
+ const n=$("policy-count"); if(n)n.textContent=String(policyQueue.length);
+ $("policy-pending-number").textContent=String(policyQueue.length);
+ const box=$("policy-requests"); box.replaceChildren();
+ if(!policyQueue.length) box.append(el("p","No hay solicitudes pendientes.","muted"));
+ policyQueue.forEach(q=>{const item=el("div","","policy-item"); item.append(el("strong",q.titulo)); item.append(el("p",q.detalle)); item.append(el("small",new Date(q.fecha).toLocaleString()+" · Solicitante: "+q.operador)); const actions=el("div","","policy-actions"); const ok=el("button","Aprobar y ejecutar"); ok.addEventListener("click",()=>policyApprove(q.id)); const no=el("button","Rechazar","peligro"); no.addEventListener("click",()=>policyReject(q.id)); actions.append(ok,no); item.append(actions); box.append(item); });
+ const audit=$("policy-audit"); audit.replaceChildren(); policyAudit.slice(0,30).forEach(a=>{const d=el("div","","policy-item");d.append(el("strong",a.tipo+" · "+new Date(a.fecha).toLocaleString()));d.append(el("p",a.detalle));d.append(el("small","Operador: "+a.operador));audit.append(d);});
+}
+function policyOpen(){ $("policy-panel").classList.add("open"); $("policy-setup").hidden=!!policyConfig.pin; $("policy-login").hidden=!policyConfig.pin||policyUnlocked; $("policy-admin").hidden=!policyUnlocked; policyRender(); }
+function policyClose(){ $("policy-panel").classList.remove("open"); }
+function policyRequest(titulo,detalle,run){
+ const id=uid("pol"); policyQueue.push({id,titulo,detalle,fecha:ahoraISO(),operador:datos.meta.operador||"Sin identificar",run});
+ policyLog("SOLICITUD",titulo+" — "+detalle); policyRender();
+ mensaje("Operación bloqueada: enviada al administrador para aprobación.",false);
+ // La solicitud queda ligada a esta sesión del navegador; tras recargar debe generarse de nuevo.
+}
+function policyApprove(id){ const i=policyQueue.findIndex(q=>q.id===id); if(i<0)return; const q=policyQueue.splice(i,1)[0]; policyLog("APROBADA",q.titulo+" — "+q.detalle); policyBypass=true; try{q.run();}catch(e){policyLog("ERROR DE EJECUCIÓN",String(e));mensaje("No se pudo ejecutar la operación aprobada.",true);}finally{policyBypass=false;} policyRender(); }
+function policyReject(id){const i=policyQueue.findIndex(q=>q.id===id);if(i<0)return;const q=policyQueue.splice(i,1)[0];policyLog("RECHAZADA",q.titulo+" — "+q.detalle);policyRender();mensaje("Solicitud rechazada por el administrador.",false);}
+function policyGuard(nombre,detalle,fn){ if(policyBypass)return fn.apply(this,Array.prototype.slice.call(arguments,3)); policyRequest(nombre,detalle,()=>fn.apply(null,Array.prototype.slice.call(arguments,3))); }
+function policyWrap(name,label,describe){ const original=window[name]; if(typeof original!=="function")return; window[name]=function(){const args=Array.from(arguments);if(policyBypass)return original.apply(this,args);const detail=describe?describe(args):"Operación solicitada";policyRequest(label,detail,()=>original.apply(null,args));}; }
+[
+ ["colocar","Instalar equipo",a=>"Tipo "+a[0]+", U "+a[1]+", rack "+a[2]],
+ ["moverEquipo","Mover equipo",a=>"Equipo "+a[0]+" → U "+a[1]+(a[2]?", rack "+a[2]:"")],
+ ["moverLote","Mover varios equipos",a=>"Equipos "+(a[0]||[]).join(", ")+" → rack "+a[1]],
+ ["quitarEquipo","Retirar equipo",a=>"Equipo "+a[0]],
+ ["quitarCable","Desconectar cable",a=>"Cable "+a[0]],
+ ["cambiarEstado","Cambiar estado operativo",a=>"Equipo "+a[0]+" → "+a[1]],
+ ["cambiarPuerta","Cambiar acceso físico",a=>"Rack "+(a[0]&&a[0].nombre||"")],
+ ["alternarSensor","Modificar sensor de seguridad",a=>"Rack "+(a[0]&&a[0].nombre||"")+", sensor "+a[1]],
+ ["aplicarPuerto","Modificar puerto de red",a=>"Equipo "+a[0]+", puerto "+a[1]],
+ ["aplicarSensorRack","Modificar lectura de rack",a=>"Rack "+a[0]+", campo "+a[1]],
+ ["aplicarTempEquipo","Modificar temperatura de equipo",a=>"Equipo "+a[0]],
+ ["aplicarCarga","Modificar carga de equipo",a=>"Equipo "+a[0]],
+ ["aplicarUPS","Modificar parámetros UPS",a=>"Equipo "+a[0]],
+ ["enviarFormEquipo","Alta o modificación de equipo",a=>$("f-nombre").value+" · "+(editandoId?"Edición":"Alta")],
+ ["procesarMensaje","Aplicar cambios desde JSON/telemetría",a=>"Aplicación de lectura externa"],
+ ["cargarEjemplo","Cargar laboratorio de ejemplo",()=>"Reemplazo/carga de datos de demostración"],
+ ["deshacer","Deshacer cambios",()=>"Revertir última operación"],
+ ["rehacer","Rehacer cambios",()=>"Reaplicar operación anterior"]
+].forEach(x=>policyWrap(x[0],x[1],x[2]));
+// Operaciones destructivas o de importación que se disparan desde botones.
+const policyClickIds={"btn-ack-todas":"Reconocer alertas activas","btn-json-aplicar":"Aplicar datos externos","btn-imp-json":"Importar respaldo JSON","btn-hist":"Borrar historial de lecturas","btn-inicial":"Restablecer toda la base de datos","btn-vaciar":"Purgar todos los equipos","btn-undo":"Deshacer cambios","btn-redo":"Rehacer cambios"};
+document.addEventListener("click",function(ev){ if(policyBypass||!ev.isTrusted)return; const b=ev.target.closest("button"); if(!b||!policyClickIds[b.id])return; ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();const id=b.id,label=policyClickIds[id];policyRequest(label,"Acción solicitada desde la consola",()=>{const target=$(id);if(!target)return;policyBypass=true;try{target.click();}finally{policyBypass=false;}}); },true);
+// La desconexión y creación de cableado también requieren aprobación.
+$("form-cable").addEventListener("submit",function(ev){if(policyBypass)return;ev.preventDefault();ev.stopImmediatePropagation();const c={tipo:$("c-tipo").value,longitudM:Number($("c-long").value),color:$("c-color").value,aEq:$("c-a-eq").value,aP:Number($("c-a-p").value),bEq:$("c-b-eq").value,bP:Number($("c-b-p").value)};const err=validarCable(c);if(err){$("cable-error").textContent=err;return;}policyRequest("Registrar cableado",etiquetaCable(c),()=>{const snap=instantanea();conectarCable(c);registrarSnap(snap);const al=revisarAlertas();guardar();render();avisarCriticas(al,"Cable "+c.id+" registrado.");});},true);
+// Importación JSON: se valida y se aplica únicamente después de la aprobación.
+$("f-import").addEventListener("change",function(ev){if(policyBypass)return;const f=ev.target.files&&ev.target.files[0];ev.target.value="";if(!f)return;ev.preventDefault();ev.stopImmediatePropagation();if(f.size>5*1024*1024){mensaje("El archivo supera 5 MB.",true);return;}policyRequest("Importar respaldo JSON","Archivo: "+String(f.name).slice(0,100),async()=>{let parsed;try{parsed=JSON.parse(await f.text());}catch(_){mensaje("El archivo no es un JSON válido.",true);return;}if(!estructuraOk(parsed)){mensaje("El JSON no tiene la estructura esperada.",true);return;}if(!confirm("Se reemplazarán los datos actuales por los del archivo ("+parsed.racks.length+" racks, "+parsed.equipos.length+" equipos). ¿Continuar?"))return;const snap=instantanea(),operador=datos.meta.operador;datos=normalizar(parsed);if(!datos.meta.operador)datos.meta.operador=operador;registrarSnap(snap);seleccionId=null;seleccionMulti.clear();selPuerto=null;editandoId=null;bitacora("importación","Datos importados desde «"+String(f.name).slice(0,60)+"»");revisarAlertas(true);guardar();render();mensaje("Datos importados correctamente.",false);});},true);
+// Alta/edición del formulario se controla también si se envía con Enter.
+$("form-equipo").addEventListener("submit",function(ev){if(policyBypass)return;ev.preventDefault();ev.stopImmediatePropagation();policyRequest("Alta o modificación de equipo",$("f-nombre").value+" · "+(editandoId?"Edición":"Alta"),()=>{policyBypass=true;try{enviarFormEquipo({preventDefault(){}});}finally{policyBypass=false;}});},true);
+$("policy-launch").addEventListener("click",policyOpen);$("policy-close").addEventListener("click",policyClose);
+$("policy-savepin").addEventListener("click",()=>{const a=$("policy-newpin").value,b=$("policy-newpin2").value;if(!/^\d{6,12}$/.test(a)||a!==b){alert("El PIN debe tener entre 6 y 12 dígitos y ambas entradas deben coincidir.");return;}policyConfig.pin=policyHash(a);policyConfig.createdAt=ahoraISO();policyPersist();policyUnlocked=true;$("policy-setup").hidden=true;$("policy-admin").hidden=false;policyLog("CONFIGURACIÓN","PIN administrativo creado");policyRender();});
+$("policy-unlock").addEventListener("click",()=>{if(policyHash($("policy-pin").value)!==policyConfig.pin){alert("PIN incorrecto.");policyLog("INTENTO FALLIDO","PIN administrativo incorrecto");return;}policyUnlocked=true;$("policy-login").hidden=true;$("policy-admin").hidden=false;$("policy-pin").value="";policyLog("SESIÓN","Administrador desbloqueado");policyRender();});
+$("policy-lock").addEventListener("click",()=>{policyUnlocked=false;$("policy-admin").hidden=true;$("policy-login").hidden=false;policyLog("SESIÓN","Administrador bloqueado");});
+$("policy-export").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(policyAudit,null,2)],{type:"application/json"});const u=URL.createObjectURL(blob);const a=el("a");a.href=u;a.download="auditoria-politicas-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(u);});
+policyLog("MOTOR INICIADO","Control de aprobación obligatoria activado en este navegador.");
 
 /* ---------- Eventos ---------- */
 $("btn-sim").addEventListener("click", () => {
