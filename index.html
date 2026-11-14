@@ -158,6 +158,29 @@
     .solo-impresion th, .solo-impresion td { border: 1px solid #888; padding: 2px 4px; color: #000; background: #fff; font-size: 10px; }
     .solo-impresion svg { max-height: 60px; width: auto; }
   }
+
+/* ---------- Agente IA NOC (módulo añadido; no reemplaza funciones existentes) ---------- */
+#noc-ai { margin: 1.5rem auto; max-width: 1250px; padding: 1rem; position: relative; z-index: 2; }
+#noc-ai .noc-shell { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; }
+#noc-ai .noc-head { display:flex; gap:.8rem; align-items:center; justify-content:space-between; flex-wrap:wrap; padding:1rem; background:var(--panel2); border-bottom:1px solid var(--borde); }
+#noc-ai .noc-title { margin:0; font-size:1.05rem; }
+#noc-ai .noc-status { color:var(--muted); font-size:.82rem; }
+#noc-ai .noc-grid { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(260px,.75fr); gap:1rem; padding:1rem; }
+#noc-ai .noc-box { min-width:0; }
+#noc-ai .noc-feed { max-height:280px; overflow:auto; display:flex; flex-direction:column; gap:.5rem; }
+#noc-ai .noc-event { border:1px solid var(--borde); border-left:3px solid var(--acento); border-radius:6px; padding:.55rem .7rem; background:var(--panel2); font-size:.84rem; overflow-wrap:anywhere; }
+#noc-ai .noc-event.crit { border-left-color:var(--pend); }
+#noc-ai .noc-event.warn { border-left-color:var(--info); }
+#noc-ai .noc-event small { display:block; color:var(--muted); margin-top:.2rem; }
+#noc-ai .noc-chat { height:280px; overflow:auto; display:flex; flex-direction:column; gap:.6rem; padding:.65rem; background:#0a0e13; border:1px solid var(--borde); border-radius:6px; }
+#noc-ai .noc-msg { max-width:95%; padding:.55rem .7rem; border-radius:8px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:.88rem; }
+#noc-ai .noc-msg.user { align-self:flex-end; background:#173b5f; }
+#noc-ai .noc-msg.bot { align-self:flex-start; background:var(--panel2); border:1px solid var(--borde); }
+#noc-ai .noc-compose { display:flex; gap:.5rem; margin-top:.55rem; }
+#noc-ai .noc-compose input { flex:1; min-width:0; }
+#noc-ai .noc-foot { color:var(--muted); font-size:.78rem; padding:0 1rem 1rem; }
+@media(max-width:760px) { #noc-ai .noc-grid { grid-template-columns:1fr; } #noc-ai .noc-compose { flex-wrap:wrap; } }
+
 </style>
 </head>
 <body>
@@ -377,6 +400,42 @@ También se acepta un arreglo de lecturas. Se ignoran los campos fuera de rango.
     </div>
     <div id="resultado-pruebas" class="panel" hidden></div>
   </section>
+
+<section id="noc-ai" aria-labelledby="noc-ai-heading">
+  <div class="noc-shell">
+    <div class="noc-head">
+      <div>
+        <h2 class="noc-title" id="noc-ai-heading">🤖 AGENTE IA NOC · Vigilancia y navegación</h2>
+        <div class="noc-status" id="noc-ai-status" role="status">Vigilancia local iniciando…</div>
+      </div>
+      <div class="acciones" style="margin:0">
+        <button type="button" class="sec" id="noc-ai-scan">Analizar estado actual</button>
+        <button type="button" class="sec" id="noc-ai-clear">Limpiar novedades</button>
+      </div>
+    </div>
+    <div class="noc-grid">
+      <div class="noc-box">
+        <h3>Detección de novedades</h3>
+        <p class="muted">Compara racks, equipos, puertos, cableado y alertas periódicamente. Los cambios se muestran aquí sin modificar los datos del inventario.</p>
+        <div class="noc-feed" id="noc-ai-feed" aria-live="polite">
+          <div class="noc-event">El agente está preparando la primera captura del sistema.</div>
+        </div>
+      </div>
+      <div class="noc-box">
+        <h3>Pregunta al asistente</h3>
+        <div class="noc-chat" id="noc-ai-chat" aria-live="polite">
+          <div class="noc-msg bot">Hola. Puedo ayudarte a interpretar el estado del datacenter, localizar equipos y explicar cómo navegar por la consola. Mis respuestas se basan en los datos que esta página me envía.</div>
+        </div>
+        <form class="noc-compose" id="noc-ai-form">
+          <input id="noc-ai-question" type="text" maxlength="1200" placeholder="Ej. ¿Qué rack requiere atención?" autocomplete="off" required>
+          <button type="submit" id="noc-ai-send">Preguntar</button>
+        </form>
+      </div>
+    </div>
+    <div class="noc-foot">La detección de cambios funciona localmente. Las preguntas a la IA requieren iniciar el servidor y configurar OPENAI_API_KEY. La IA analiza una copia del estado; no ejecuta cambios ni controla equipos.</div>
+  </div>
+</section>
+
 </main>
 
 <div id="reporte" class="solo-impresion" aria-hidden="true"></div>
@@ -2015,6 +2074,199 @@ if (datos.racks.length > 0) rastroAbiertos.add(datos.racks[0].id);
 muestrear();
 render();
 setInterval(() => { muestrear(); guardar(); actualizarGraficas(); }, MUESTREO_MS);
+
+/* ---------- AGENTE IA NOC: módulo aislado añadido al final de la aplicación ---------- */
+(() => {
+  const $ai = id => document.getElementById(id);
+  const feed = $ai("noc-ai-feed");
+  const chat = $ai("noc-ai-chat");
+  const status = $ai("noc-ai-status");
+  const STORAGE = "rack-noc-ai-events.v1";
+  const MAX_EVENTS = 120;
+  let previousSnapshot = null;
+  let events = [];
+
+  function safeText(value) { return String(value ?? ""); }
+  function addEvent(message, severity = "info", when = new Date()) {
+    const item = { message: safeText(message).slice(0, 500), severity, when: when.toISOString() };
+    events.unshift(item);
+    events = events.slice(0, MAX_EVENTS);
+    try { localStorage.setItem(STORAGE, JSON.stringify(events)); } catch (_) {}
+    renderEvents();
+  }
+  function renderEvents() {
+    feed.replaceChildren();
+    if (!events.length) {
+      const empty = document.createElement("div");
+      empty.className = "noc-event";
+      empty.textContent = "No hay novedades detectadas todavía.";
+      feed.append(empty);
+      return;
+    }
+    events.forEach(item => {
+      const node = document.createElement("div");
+      node.className = "noc-event " + (item.severity === "crit" ? "crit" : item.severity === "warn" ? "warn" : "");
+      const msg = document.createElement("div");
+      msg.textContent = item.message;
+      const time = document.createElement("small");
+      time.textContent = new Date(item.when).toLocaleString();
+      node.append(msg, time);
+      feed.append(node);
+    });
+  }
+  function stableSnapshot() {
+    // Excluye el historial de muestreo para no generar avisos falsos cada 5 segundos.
+    return JSON.stringify({
+      racks: datos.racks,
+      equipos: datos.equipos,
+      circuitos: datos.circuitos,
+      alertas: datos.alertas,
+      bitacora: datos.bitacora
+    });
+  }
+  function diffObjects(before, after, path = "sistema", out = []) {
+    if (out.length >= 30 || before === after) return out;
+    if (before === null || after === null || typeof before !== "object" || typeof after !== "object") {
+      if (JSON.stringify(before) !== JSON.stringify(after)) out.push(path + ": " + safeText(before) + " → " + safeText(after));
+      return out;
+    }
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+    for (const key of keys) {
+      if (out.length >= 30) break;
+      const nextPath = path + "." + key;
+      if (!(key in before)) out.push(nextPath + ": añadido");
+      else if (!(key in after)) out.push(nextPath + ": eliminado");
+      else diffObjects(before[key], after[key], nextPath, out);
+    }
+    return out;
+  }
+  function snapshotObject() {
+    return {
+      racks: datos.racks,
+      equipos: datos.equipos,
+      circuitos: datos.circuitos,
+      alertas: datos.alertas,
+      bitacora: datos.bitacora
+    };
+  }
+  function scanChanges() {
+    try {
+      const current = stableSnapshot();
+      if (previousSnapshot === null) {
+        previousSnapshot = current;
+        status.textContent = "Vigilancia activa · revisión cada 2 segundos · primera captura completada";
+        return;
+      }
+      if (current !== previousSnapshot) {
+        const oldObj = JSON.parse(previousSnapshot);
+        const changes = diffObjects(oldObj, snapshotObject());
+        previousSnapshot = current;
+        if (changes.length) {
+          changes.forEach(change => addEvent(change, /ALARMA|crit|temperatura|humedad|down|eliminado/i.test(change) ? "warn" : "info"));
+          status.textContent = "Vigilancia activa · " + changes.length + " cambio(s) detectado(s)";
+        }
+      }
+    } catch (err) {
+      status.textContent = "Vigilancia activa · no se pudo comparar una captura";
+    }
+  }
+  function summarizeSystem() {
+    return {
+      fechaCaptura: new Date().toISOString(),
+      racks: datos.racks.map(r => ({
+        id:r.id, nombre:r.nombre, ubicacion:r.ubicacion, alturaU:r.alturaU,
+        tempEntradaC:r.tempC, tempSalidaC:r.tempSalidaC, humedadPct:r.humedadPct,
+        puerta:r.puerta, humo:r.humo, agua:r.agua, capacidadW:r.capacidadW
+      })),
+      equipos: datos.equipos.map(e => ({
+        id:e.id, rackId:e.rackId, nombre:e.nombre, tipo:e.tipo, uInicio:e.uInicio,
+        alturaU:e.alturaU, consumoW:e.consumoW, cargaPct:e.cargaPct, tempC:e.tempC,
+        pdu:e.pdu, estado:e.estado, marca:e.marca, modelo:e.modelo, ip:e.ip,
+        puertos:e.puertos.map(p => ({n:p.n,estado:p.estado,cableId:p.cableId,vel:p.vel,vlan:p.vlan}))
+      })),
+      cables: datos.circuitos.map(c => ({
+        id:c.id,tipo:c.tipo,longitudM:c.longitudM,aEq:c.aEq,aP:c.aP,bEq:c.bEq,bP:c.bP
+      })),
+      alertas: datos.alertas.slice(-100).map(a => ({
+        fecha:a.fecha,sev:a.sev,origen:a.origen,msg:a.msg,ack:a.ack,resuelta:a.resuelta
+      })),
+      bitacoraReciente: datos.bitacora.slice(-60).map(b => ({
+        fecha:b.fecha,accion:b.accion,detalle:b.detalle,usuario:b.usuario
+      }))
+    };
+  }
+  function addChat(text, who) {
+    const node = document.createElement("div");
+    node.className = "noc-msg " + who;
+    node.textContent = text;
+    chat.append(node);
+    chat.scrollTop = chat.scrollHeight;
+    return node;
+  }
+  async function askAI(question) {
+    const payload = { question, system: summarizeSystem() };
+    const response = await fetch("/api/assistant", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "No se pudo consultar el servicio de IA.");
+    return data.answer || "No recibí una respuesta de texto.";
+  }
+  $ai("noc-ai-form").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const input = $ai("noc-ai-question");
+    const question = input.value.trim();
+    if (!question) return;
+    addChat(question, "user");
+    input.value = "";
+    const pending = addChat("Analizando los datos actuales…", "bot");
+    $ai("noc-ai-send").disabled = true;
+    try {
+      const answer = await askAI(question);
+      pending.textContent = answer;
+    } catch (err) {
+      pending.textContent = "No fue posible conectar con el agente: " + err.message +
+        "\nComprueba que abriste la consola desde http://localhost:3000 y que el servidor tiene OPENAI_API_KEY configurada.";
+    } finally {
+      $ai("noc-ai-send").disabled = false;
+      chat.scrollTop = chat.scrollHeight;
+    }
+  });
+  $ai("noc-ai-scan").addEventListener("click", async () => {
+    const question = "Analiza el estado actual del datacenter. Resume novedades, riesgos, anomalías leves, prioridades y recomendaciones de navegación. Distingue hechos de posibles causas.";
+    addChat(question, "user");
+    const pending = addChat("Analizando racks, equipos, puertos, cableado y alertas…", "bot");
+    try { pending.textContent = await askAI(question); }
+    catch (err) { pending.textContent = "No se pudo completar el análisis: " + err.message; }
+  });
+  $ai("noc-ai-clear").addEventListener("click", () => {
+    events = [];
+    try { localStorage.removeItem(STORAGE); } catch (_) {}
+    renderEvents();
+    status.textContent = "Novedades visibles limpiadas; la vigilancia continúa activa.";
+  });
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE) || "[]");
+    if (Array.isArray(saved)) events = saved.slice(0, MAX_EVENTS);
+  } catch (_) {}
+  renderEvents();
+  scanChanges();
+  window.setInterval(scanChanges, 2000);
+  window.addEventListener("storage", ev => {
+    if (ev.key === "consola-racks.v2") {
+      try {
+        const newer = JSON.parse(ev.newValue);
+        if (newer && Array.isArray(newer.racks) && Array.isArray(newer.equipos)) {
+          // Otra pestaña modificó la consola. Se informa; no se sobrescribe el estado local.
+          addEvent("Otra pestaña del navegador actualizó la base de datos de la consola.", "info");
+        }
+      } catch (_) {}
+    }
+  });
+})();
+
 </script>
 </body>
 </html>
