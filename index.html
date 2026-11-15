@@ -159,43 +159,344 @@
     .solo-impresion svg { max-height: 60px; width: auto; }
   }
 
-/* ---------- Agente IA NOC (módulo añadido; no reemplaza funciones existentes) ---------- */
-#noc-ai { margin: 1.5rem auto; max-width: 1250px; padding: 1rem; position: relative; z-index: 2; }
-#noc-ai .noc-shell { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; }
-#noc-ai .noc-head { display:flex; gap:.8rem; align-items:center; justify-content:space-between; flex-wrap:wrap; padding:1rem; background:var(--panel2); border-bottom:1px solid var(--borde); }
-#noc-ai .noc-title { margin:0; font-size:1.05rem; }
-#noc-ai .noc-status { color:var(--muted); font-size:.82rem; }
-#noc-ai .noc-grid { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(260px,.75fr); gap:1rem; padding:1rem; }
-#noc-ai .noc-box { min-width:0; }
-#noc-ai .noc-feed { max-height:280px; overflow:auto; display:flex; flex-direction:column; gap:.5rem; }
-#noc-ai .noc-event { border:1px solid var(--borde); border-left:3px solid var(--acento); border-radius:6px; padding:.55rem .7rem; background:var(--panel2); font-size:.84rem; overflow-wrap:anywhere; }
-#noc-ai .noc-event.crit { border-left-color:var(--pend); }
-#noc-ai .noc-event.warn { border-left-color:var(--info); }
-#noc-ai .noc-event small { display:block; color:var(--muted); margin-top:.2rem; }
-#noc-ai .noc-chat { height:280px; overflow:auto; display:flex; flex-direction:column; gap:.6rem; padding:.65rem; background:#0a0e13; border:1px solid var(--borde); border-radius:6px; }
-#noc-ai .noc-msg { max-width:95%; padding:.55rem .7rem; border-radius:8px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:.88rem; }
-#noc-ai .noc-msg.user { align-self:flex-end; background:#173b5f; }
-#noc-ai .noc-msg.bot { align-self:flex-start; background:var(--panel2); border:1px solid var(--borde); }
-#noc-ai .noc-compose { display:flex; gap:.5rem; margin-top:.55rem; }
-#noc-ai .noc-compose input { flex:1; min-width:0; }
-#noc-ai .noc-foot { color:var(--muted); font-size:.78rem; padding:0 1rem 1rem; }
-@media(max-width:760px) { #noc-ai .noc-grid { grid-template-columns:1fr; } #noc-ai .noc-compose { flex-wrap:wrap; } }
+  /* === AI Agent & Policy Engine Drawer Styles (Visual Match to Preview) === */
+  @keyframes nocFocusPulse {
+    0% { box-shadow: 0 0 0 0 rgba(77, 163, 255, 0.85); }
+    70% { box-shadow: 0 0 0 10px rgba(77, 163, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(77, 163, 255, 0); }
+  }
+  .noc-ai-highlight {
+    outline: 2px solid #4da3ff !important;
+    outline-offset: 3px;
+    animation: nocFocusPulse 1.1s ease-out 2;
+  }
 
+  #noc-shell {
+    min-height: 100vh;
+    transition: padding-right 0.2s ease;
+  }
+  @media (min-width: 960px) {
+    body.ia-drawer-open #noc-shell { padding-right: 410px; }
+  }
+  @media (min-width: 1280px) {
+    body.ia-drawer-open #noc-shell { padding-right: 460px; }
+  }
 
-/* Motor de políticas administrativas (módulo adicional) */
-#policy-launch{position:fixed;right:18px;bottom:18px;z-index:9998;box-shadow:0 5px 24px #0009}
-#policy-panel{position:fixed;inset:0;z-index:9999;background:#05090fd9;display:none;align-items:center;justify-content:center;padding:16px}
-#policy-panel.open{display:flex}
-#policy-card{width:min(900px,100%);max-height:90vh;overflow:auto;background:#161b22;border:1px solid #4da3ff;border-radius:12px;padding:20px;box-shadow:0 20px 70px #000b}
-#policy-card h2{margin-top:0}#policy-card input,#policy-card textarea{width:100%;margin:.25rem 0 .7rem}
-.policy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-.policy-item{border:1px solid var(--borde);border-radius:8px;padding:12px;margin:8px 0;background:var(--panel2)}
-.policy-item small{color:var(--muted)}.policy-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.policy-lock{color:#ffb4ab}.policy-ok{color:#56d364}
+  #ia-fab {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 60;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 12px;
+    border: 1px solid #4da3ff;
+    background: #161b22;
+    color: #e6edf3;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #ia-fab:hover { background: #1f2630; }
+  #ia-fab[hidden] { display: none; }
+  #ia-fab .ia-pill-crit { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #ff7b72; font-weight: 700; }
+  #ia-fab .ia-pill-pend { background: #e3b341; color: #04121f; border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: 700; }
+
+  #ia-drawer {
+    position: relative;
+    z-index: 55;
+    width: 100%;
+    max-width: none;
+    max-height: 75vh;
+    display: flex;
+    flex-direction: column;
+    border-bottom: 2px solid #4da3ff;
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  }
+  @media (min-width: 960px) {
+    #ia-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 410px;
+      max-height: none;
+      border-bottom: 0;
+      border-left: 1px solid #343d49;
+      box-shadow: -12px 0 36px rgba(0, 0, 0, 0.55);
+    }
+  }
+  @media (min-width: 1280px) {
+    #ia-drawer { width: 460px; }
+  }
+  #ia-drawer[hidden] { display: none; }
+  #ia-drawer *, #ia-drawer *::before, #ia-drawer *::after { box-sizing: border-box; }
+  #ia-drawer button {
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid #343d49;
+    background: #1f2630;
+    color: #e6edf3;
+    padding: 6px 10px;
+    cursor: pointer;
+    line-height: 1.25;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+  #ia-drawer button:hover:not(:disabled) { border-color: #4da3ff; }
+  #ia-drawer button:disabled { opacity: 0.45; cursor: not-allowed; }
+  #ia-drawer button.ia-btn-primary {
+    background: #4da3ff;
+    border-color: #4da3ff;
+    color: #04121f;
+  }
+  #ia-drawer button.ia-btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+  #ia-drawer button.ia-btn-ok {
+    background: #56d364;
+    border-color: #56d364;
+    color: #04121f;
+  }
+  #ia-drawer button.ia-btn-warn {
+    background: #e3b341;
+    border-color: #e3b341;
+    color: #04121f;
+  }
+  #ia-drawer button.ia-btn-danger {
+    background: transparent;
+    border-color: #ff7b72;
+    color: #ff7b72;
+  }
+  #ia-drawer button.ia-btn-danger-fill {
+    background: #ff7b72;
+    border-color: #ff7b72;
+    color: #04121f;
+  }
+  #ia-drawer button.ia-btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: #9aa7b4;
+  }
+  #ia-drawer button.ia-btn-ghost:hover:not(:disabled) {
+    background: #1f2630;
+    border-color: transparent;
+    color: #e6edf3;
+  }
+  #ia-drawer button.ia-btn-link {
+    background: transparent;
+    border: none;
+    padding: 2px 4px;
+    color: #4da3ff;
+    font-size: 11px;
+  }
+  #ia-drawer button.ia-btn-link:hover { text-decoration: underline; border: none; }
+  #ia-drawer input {
+    width: 100%;
+    font: inherit;
+    font-size: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #343d49;
+    background: #161b22;
+    color: #e6edf3;
+  }
+  #ia-drawer input:focus { outline: none; border-color: #4da3ff; }
+
+  .ia-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid #343d49;
+    background: #161b22;
+    padding: 12px 14px;
+  }
+  .ia-title-row { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 700; color: #e6edf3; margin: 0; }
+  .ia-sub-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11px; color: #9aa7b4; margin: 3px 0 0; font-variant-numeric: tabular-nums; }
+  .ia-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    border-bottom: 1px solid #343d49;
+    background: #161b22;
+    padding: 8px 12px;
+  }
+  #ia-drawer .ia-tab-btn {
+    border-color: transparent;
+    background: transparent;
+    color: #9aa7b4;
+    padding: 7px 6px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  #ia-drawer .ia-tab-btn:hover { background: #1f2630; color: #e6edf3; border-color: transparent; }
+  #ia-drawer .ia-tab-btn.active { background: #4da3ff; color: #04121f; }
+
+  .ia-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ia-card {
+    border-radius: 8px;
+    border: 1px solid #343d49;
+    background: #161b22;
+    padding: 12px;
+  }
+  .ia-card.sev-ok { border-color: rgba(86, 211, 100, 0.45); }
+  .ia-card.sev-warn { border-color: rgba(227, 179, 65, 0.55); }
+  .ia-card.sev-crit { border-color: rgba(255, 123, 114, 0.65); }
+  .ia-card-dark {
+    border-radius: 6px;
+    border: 1px solid #343d49;
+    background: #0d1117;
+    padding: 10px;
+  }
+  .ia-row-between { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .ia-row-gap { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ia-telemetry-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    color: #9aa7b4;
+    font-variant-numeric: tabular-nums;
+  }
+  .ia-telemetry-cell { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .ia-divider { border-top: 1px solid #343d49; margin-top: 9px; padding-top: 8px; }
+  .ia-txt-ok { color: #56d364; }
+  .ia-txt-warn { color: #e3b341; }
+  .ia-txt-crit { color: #ff7b72; }
+  .ia-txt-info { color: #b392f0; }
+  .ia-txt-muted { color: #9aa7b4; }
+  .ia-txt-accent { color: #4da3ff; }
+  .ia-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  .ia-chat-wrap { display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 420px; }
+  .ia-chat-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 2px; }
+  .ia-msg {
+    border-radius: 8px;
+    border: 1px solid #343d49;
+    background: #161b22;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    margin-right: 10px;
+  }
+  .ia-msg.user {
+    margin-right: 0;
+    margin-left: 24px;
+    border-color: rgba(77, 163, 255, 0.45);
+    background: #1f2630;
+  }
+  .ia-msg-head { display: flex; justify-content: space-between; font-size: 11px; color: #9aa7b4; margin-bottom: 4px; }
+  .ia-msg-body { white-space: pre-wrap; word-break: break-word; }
+  .ia-trace-box {
+    margin-top: 8px;
+    border-radius: 6px;
+    border: 1px solid #343d49;
+    background: #0d1117;
+    padding: 8px;
+    font-size: 11px;
+  }
+  .ia-chat-form {
+    border-top: 1px solid #343d49;
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ia-subtabs {
+    display: flex;
+    gap: 4px;
+    border-radius: 8px;
+    border: 1px solid #343d49;
+    background: #0d1117;
+    padding: 4px;
+  }
+  #ia-drawer .ia-subtab {
+    flex: 1;
+    border-color: transparent;
+    background: transparent;
+    color: #9aa7b4;
+    padding: 6px 4px;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+  #ia-drawer .ia-subtab.active {
+    background: #1f2630;
+    color: #4da3ff;
+    border-color: #343d49;
+  }
+  .ia-seg-group {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+    border-radius: 6px;
+    border: 1px solid #343d49;
+    background: #0d1117;
+    padding: 4px;
+  }
+  #ia-drawer .ia-seg-btn {
+    flex: 1;
+    border-color: transparent;
+    background: transparent;
+    color: #9aa7b4;
+    font-size: 11.5px;
+    padding: 5px 6px;
+    white-space: nowrap;
+  }
+  #ia-drawer .ia-seg-btn.sel-auto { background: #56d364; color: #04121f; }
+  #ia-drawer .ia-seg-btn.sel-approve { background: #e3b341; color: #04121f; }
+  #ia-drawer .ia-seg-btn.sel-deny { background: #ff7b72; color: #04121f; }
+  #ia-drawer .ia-seg-btn.sel-accent { background: #4da3ff; color: #04121f; }
+
+  @media print {
+    body.ia-drawer-open #noc-shell { padding-right: 0 !important; }
+    #ia-drawer, #ia-fab { display: none !important; }
+  }
 
 </style>
-</head>
-<body>
+<script src="/_aistudio-iframe.js?v=1f94f900"></script></head>
+<body class="ia-drawer-open">
+<aside id="ia-drawer" aria-label="Panel de Agente IA NOC y Motor de Políticas">
+  <div class="ia-header">
+    <div style="min-width:0">
+      <div class="ia-title-row">
+        <span id="ia-ico-bot" style="color:#4da3ff;display:inline-flex"></span>
+        <span>Agente IA NOC & Políticas</span>
+      </div>
+      <div id="ia-header-sub" class="ia-sub-row"></div>
+    </div>
+    <button type="button" id="ia-btn-hide" title="Minimizar panel IA">Ocultar ▸</button>
+  </div>
+
+  <div class="ia-tabs" role="tablist">
+    <button type="button" class="ia-tab-btn active" data-ia-tab="reports">Informes</button>
+    <button type="button" class="ia-tab-btn" data-ia-tab="chat">Agente IA</button>
+    <button type="button" class="ia-tab-btn" data-ia-tab="policies" id="ia-tab-policies">Políticas</button>
+  </div>
+
+  <div class="ia-body" id="ia-body"></div>
+</aside>
+
+<div id="noc-shell">
 <a class="salto" href="#contenido">Saltar al contenido</a>
 
 <header class="cabecera">
@@ -210,6 +511,7 @@
     <button type="button" id="btn-redo" class="sec" disabled title="Ctrl+Y">↷ Rehacer</button>
     <button type="button" id="btn-sim" class="sec" aria-pressed="false">Simular telemetría: OFF</button>
     <button type="button" id="btn-imprimir" class="sec">🖨️ Imprimir / PDF</button>
+    <button type="button" id="ia-hdr-toggle" class="sec" style="border-color:#4da3ff;color:#4da3ff">🤖 Agente IA · Políticas</button>
   </div>
 </header>
 
@@ -412,66 +714,7 @@ También se acepta un arreglo de lecturas. Se ignoran los campos fuera de rango.
     </div>
     <div id="resultado-pruebas" class="panel" hidden></div>
   </section>
-
-<section id="noc-ai" aria-labelledby="noc-ai-heading">
-  <div class="noc-shell">
-    <div class="noc-head">
-      <div>
-        <h2 class="noc-title" id="noc-ai-heading">🤖 AGENTE IA NOC · Vigilancia y navegación</h2>
-        <div class="noc-status" id="noc-ai-status" role="status">Vigilancia local iniciando…</div>
-      </div>
-      <div class="acciones" style="margin:0">
-        <button type="button" class="sec" id="noc-ai-scan">Analizar estado actual</button>
-        <button type="button" class="sec" id="noc-ai-clear">Limpiar novedades</button>
-      </div>
-    </div>
-    <div class="noc-grid">
-      <div class="noc-box">
-        <h3>Detección de novedades</h3>
-        <p class="muted">Compara racks, equipos, puertos, cableado y alertas periódicamente. Los cambios se muestran aquí sin modificar los datos del inventario.</p>
-        <div class="noc-feed" id="noc-ai-feed" aria-live="polite">
-          <div class="noc-event">El agente está preparando la primera captura del sistema.</div>
-        </div>
-      </div>
-      <div class="noc-box">
-        <h3>Pregunta al asistente</h3>
-        <div class="noc-chat" id="noc-ai-chat" aria-live="polite">
-          <div class="noc-msg bot">Hola. Puedo ayudarte a interpretar el estado del datacenter, localizar equipos y explicar cómo navegar por la consola. Mis respuestas se basan en los datos que esta página me envía.</div>
-        </div>
-        <form class="noc-compose" id="noc-ai-form">
-          <input id="noc-ai-question" type="text" maxlength="1200" placeholder="Ej. ¿Qué rack requiere atención?" autocomplete="off" required>
-          <button type="submit" id="noc-ai-send">Preguntar</button>
-        </form>
-      </div>
-    </div>
-    <div class="noc-foot">La detección de cambios funciona localmente. Las preguntas a la IA requieren iniciar el servidor y configurar OPENAI_API_KEY. La IA analiza una copia del estado; no ejecuta cambios ni controla equipos.</div>
-  </div>
-</section>
-
 </main>
-
-
-<button type="button" id="policy-launch">🔐 Administración de políticas <span id="policy-count">0</span></button>
-<div id="policy-panel" role="dialog" aria-modal="true" aria-labelledby="policy-title">
- <div id="policy-card">
-  <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap"><h2 id="policy-title">Motor de políticas · Administrador</h2><button type="button" class="sec" id="policy-close">Cerrar</button></div>
-  <p id="policy-status" class="muted">Las operaciones sensibles requieren aprobación administrativa.</p>
-  <section id="policy-setup" hidden>
-   <h3>Configurar PIN del administrador</h3><p class="muted">Crea un PIN de 6 a 12 dígitos. Se guardará en este navegador.</p>
-   <label for="policy-newpin">Nuevo PIN</label><input id="policy-newpin" type="password" inputmode="numeric" minlength="6" maxlength="12" autocomplete="new-password">
-   <label for="policy-newpin2">Confirmar PIN</label><input id="policy-newpin2" type="password" inputmode="numeric" minlength="6" maxlength="12" autocomplete="new-password">
-   <button type="button" id="policy-savepin">Crear PIN administrador</button>
-  </section>
-  <section id="policy-login" hidden><h3>Desbloquear administración</h3><label for="policy-pin">PIN administrador</label><input id="policy-pin" type="password" inputmode="numeric" maxlength="12" autocomplete="current-password"><button type="button" id="policy-unlock">Desbloquear</button></section>
-  <section id="policy-admin" hidden>
-   <div class="policy-grid"><div class="policy-item"><strong>Control activo</strong><p class="policy-ok">Aprobación obligatoria</p></div><div class="policy-item"><strong>Solicitudes pendientes</strong><p id="policy-pending-number">0</p></div><div class="policy-item"><strong>Administrador</strong><p>Sesión local desbloqueada</p></div></div>
-   <h3>Solicitudes de autorización</h3><div id="policy-requests"></div>
-   <h3>Registro de auditoría</h3><div id="policy-audit"></div>
-   <div class="policy-actions"><button type="button" class="sec" id="policy-lock">Bloquear administrador</button><button type="button" class="sec" id="policy-export">Exportar auditoría</button></div>
-  </section>
-  <p class="muted policy-lock">Importante: este PIN es una barrera local de uso, no una identidad verificada. Los controles no se sincronizan entre navegadores o computadores.</p>
- </div>
-</div>
 
 <div id="reporte" class="solo-impresion" aria-hidden="true"></div>
 
@@ -1294,6 +1537,7 @@ function renderRacksAcordeon() {
   datos.racks.forEach(rack => {
     const abierto = rastroAbiertos.has(rack.id);
     const item = el("div", "", "rack-acordeon-item" + (abierto ? " abierto" : ""));
+    item.dataset.rackId = rack.id;
     const uOcup = unidadesOcupadas(rack), pctU = Math.round(uOcup / rack.alturaU * 100);
     const potW = potenciaRack(rack), capW = rack.capacidadW || CAPACIDAD_RACK_W;
     const equiposRack = datos.equipos.filter(e => e.rackId === rack.id), totalEq = equiposRack.length;
@@ -1741,6 +1985,7 @@ function render() {
   $("version").textContent = APP_VERSION;
   renderTarjetas(); renderAlertas(); renderRacksAcordeon(); renderTopologia(); renderFormCable(); renderCables(); renderInventario(); renderBitacora(); botonesUndo();
   const op = $("f-operador"); if (document.activeElement !== op) op.value = datos.meta.operador;
+  window.dispatchEvent(new CustomEvent("noc:updated"));
 }
 function renderSeguro() {
   const ae = document.activeElement;
@@ -2015,73 +2260,6 @@ function ejecutarPruebas() {
   return resultados;
 }
 
-
-/* ---------- MOTOR DE POLÍTICAS: extensión independiente ---------- */
-const POLICY_KEY = "consola-racks.policy.v1";
-let policyConfig = null, policyUnlocked = false, policyBypass = false;
-let policyQueue = [], policyAudit = [];
-try { policyConfig = JSON.parse(localStorage.getItem(POLICY_KEY) || "null"); } catch (_) { policyConfig = null; }
-if (!policyConfig || typeof policyConfig !== "object") policyConfig = { pin: "", createdAt: "" };
-function policyPersist(){ try { localStorage.setItem(POLICY_KEY, JSON.stringify({pin:policyConfig.pin,createdAt:policyConfig.createdAt,audit:policyAudit.slice(-300)})); } catch(_){} }
-if (Array.isArray(policyConfig.audit)) policyAudit = policyConfig.audit.slice(-300);
-function policyHash(v){ let h=2166136261; for(let i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619);} return (h>>>0).toString(16); }
-function policyLog(tipo, detalle){ policyAudit.unshift({fecha:new Date().toISOString(),tipo,detalle:String(detalle||"").slice(0,500),operador:(datos.meta.operador||"Sin identificar")}); policyAudit=policyAudit.slice(0,300); policyPersist(); }
-function policyRender(){
- const n=$("policy-count"); if(n)n.textContent=String(policyQueue.length);
- $("policy-pending-number").textContent=String(policyQueue.length);
- const box=$("policy-requests"); box.replaceChildren();
- if(!policyQueue.length) box.append(el("p","No hay solicitudes pendientes.","muted"));
- policyQueue.forEach(q=>{const item=el("div","","policy-item"); item.append(el("strong",q.titulo)); item.append(el("p",q.detalle)); item.append(el("small",new Date(q.fecha).toLocaleString()+" · Solicitante: "+q.operador)); const actions=el("div","","policy-actions"); const ok=el("button","Aprobar y ejecutar"); ok.addEventListener("click",()=>policyApprove(q.id)); const no=el("button","Rechazar","peligro"); no.addEventListener("click",()=>policyReject(q.id)); actions.append(ok,no); item.append(actions); box.append(item); });
- const audit=$("policy-audit"); audit.replaceChildren(); policyAudit.slice(0,30).forEach(a=>{const d=el("div","","policy-item");d.append(el("strong",a.tipo+" · "+new Date(a.fecha).toLocaleString()));d.append(el("p",a.detalle));d.append(el("small","Operador: "+a.operador));audit.append(d);});
-}
-function policyOpen(){ $("policy-panel").classList.add("open"); $("policy-setup").hidden=!!policyConfig.pin; $("policy-login").hidden=!policyConfig.pin||policyUnlocked; $("policy-admin").hidden=!policyUnlocked; policyRender(); }
-function policyClose(){ $("policy-panel").classList.remove("open"); }
-function policyRequest(titulo,detalle,run){
- const id=uid("pol"); policyQueue.push({id,titulo,detalle,fecha:ahoraISO(),operador:datos.meta.operador||"Sin identificar",run});
- policyLog("SOLICITUD",titulo+" — "+detalle); policyRender();
- mensaje("Operación bloqueada: enviada al administrador para aprobación.",false);
- // La solicitud queda ligada a esta sesión del navegador; tras recargar debe generarse de nuevo.
-}
-function policyApprove(id){ const i=policyQueue.findIndex(q=>q.id===id); if(i<0)return; const q=policyQueue.splice(i,1)[0]; policyLog("APROBADA",q.titulo+" — "+q.detalle); policyBypass=true; try{q.run();}catch(e){policyLog("ERROR DE EJECUCIÓN",String(e));mensaje("No se pudo ejecutar la operación aprobada.",true);}finally{policyBypass=false;} policyRender(); }
-function policyReject(id){const i=policyQueue.findIndex(q=>q.id===id);if(i<0)return;const q=policyQueue.splice(i,1)[0];policyLog("RECHAZADA",q.titulo+" — "+q.detalle);policyRender();mensaje("Solicitud rechazada por el administrador.",false);}
-function policyGuard(nombre,detalle,fn){ if(policyBypass)return fn.apply(this,Array.prototype.slice.call(arguments,3)); policyRequest(nombre,detalle,()=>fn.apply(null,Array.prototype.slice.call(arguments,3))); }
-function policyWrap(name,label,describe){ const original=window[name]; if(typeof original!=="function")return; window[name]=function(){const args=Array.from(arguments);if(policyBypass)return original.apply(this,args);const detail=describe?describe(args):"Operación solicitada";policyRequest(label,detail,()=>original.apply(null,args));}; }
-[
- ["colocar","Instalar equipo",a=>"Tipo "+a[0]+", U "+a[1]+", rack "+a[2]],
- ["moverEquipo","Mover equipo",a=>"Equipo "+a[0]+" → U "+a[1]+(a[2]?", rack "+a[2]:"")],
- ["moverLote","Mover varios equipos",a=>"Equipos "+(a[0]||[]).join(", ")+" → rack "+a[1]],
- ["quitarEquipo","Retirar equipo",a=>"Equipo "+a[0]],
- ["quitarCable","Desconectar cable",a=>"Cable "+a[0]],
- ["cambiarEstado","Cambiar estado operativo",a=>"Equipo "+a[0]+" → "+a[1]],
- ["cambiarPuerta","Cambiar acceso físico",a=>"Rack "+(a[0]&&a[0].nombre||"")],
- ["alternarSensor","Modificar sensor de seguridad",a=>"Rack "+(a[0]&&a[0].nombre||"")+", sensor "+a[1]],
- ["aplicarPuerto","Modificar puerto de red",a=>"Equipo "+a[0]+", puerto "+a[1]],
- ["aplicarSensorRack","Modificar lectura de rack",a=>"Rack "+a[0]+", campo "+a[1]],
- ["aplicarTempEquipo","Modificar temperatura de equipo",a=>"Equipo "+a[0]],
- ["aplicarCarga","Modificar carga de equipo",a=>"Equipo "+a[0]],
- ["aplicarUPS","Modificar parámetros UPS",a=>"Equipo "+a[0]],
- ["enviarFormEquipo","Alta o modificación de equipo",a=>$("f-nombre").value+" · "+(editandoId?"Edición":"Alta")],
- ["procesarMensaje","Aplicar cambios desde JSON/telemetría",a=>"Aplicación de lectura externa"],
- ["cargarEjemplo","Cargar laboratorio de ejemplo",()=>"Reemplazo/carga de datos de demostración"],
- ["deshacer","Deshacer cambios",()=>"Revertir última operación"],
- ["rehacer","Rehacer cambios",()=>"Reaplicar operación anterior"]
-].forEach(x=>policyWrap(x[0],x[1],x[2]));
-// Operaciones destructivas o de importación que se disparan desde botones.
-const policyClickIds={"btn-ack-todas":"Reconocer alertas activas","btn-json-aplicar":"Aplicar datos externos","btn-imp-json":"Importar respaldo JSON","btn-hist":"Borrar historial de lecturas","btn-inicial":"Restablecer toda la base de datos","btn-vaciar":"Purgar todos los equipos","btn-undo":"Deshacer cambios","btn-redo":"Rehacer cambios"};
-document.addEventListener("click",function(ev){ if(policyBypass||!ev.isTrusted)return; const b=ev.target.closest("button"); if(!b||!policyClickIds[b.id])return; ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();const id=b.id,label=policyClickIds[id];policyRequest(label,"Acción solicitada desde la consola",()=>{const target=$(id);if(!target)return;policyBypass=true;try{target.click();}finally{policyBypass=false;}}); },true);
-// La desconexión y creación de cableado también requieren aprobación.
-$("form-cable").addEventListener("submit",function(ev){if(policyBypass)return;ev.preventDefault();ev.stopImmediatePropagation();const c={tipo:$("c-tipo").value,longitudM:Number($("c-long").value),color:$("c-color").value,aEq:$("c-a-eq").value,aP:Number($("c-a-p").value),bEq:$("c-b-eq").value,bP:Number($("c-b-p").value)};const err=validarCable(c);if(err){$("cable-error").textContent=err;return;}policyRequest("Registrar cableado",etiquetaCable(c),()=>{const snap=instantanea();conectarCable(c);registrarSnap(snap);const al=revisarAlertas();guardar();render();avisarCriticas(al,"Cable "+c.id+" registrado.");});},true);
-// Importación JSON: se valida y se aplica únicamente después de la aprobación.
-$("f-import").addEventListener("change",function(ev){if(policyBypass)return;const f=ev.target.files&&ev.target.files[0];ev.target.value="";if(!f)return;ev.preventDefault();ev.stopImmediatePropagation();if(f.size>5*1024*1024){mensaje("El archivo supera 5 MB.",true);return;}policyRequest("Importar respaldo JSON","Archivo: "+String(f.name).slice(0,100),async()=>{let parsed;try{parsed=JSON.parse(await f.text());}catch(_){mensaje("El archivo no es un JSON válido.",true);return;}if(!estructuraOk(parsed)){mensaje("El JSON no tiene la estructura esperada.",true);return;}if(!confirm("Se reemplazarán los datos actuales por los del archivo ("+parsed.racks.length+" racks, "+parsed.equipos.length+" equipos). ¿Continuar?"))return;const snap=instantanea(),operador=datos.meta.operador;datos=normalizar(parsed);if(!datos.meta.operador)datos.meta.operador=operador;registrarSnap(snap);seleccionId=null;seleccionMulti.clear();selPuerto=null;editandoId=null;bitacora("importación","Datos importados desde «"+String(f.name).slice(0,60)+"»");revisarAlertas(true);guardar();render();mensaje("Datos importados correctamente.",false);});},true);
-// Alta/edición del formulario se controla también si se envía con Enter.
-$("form-equipo").addEventListener("submit",function(ev){if(policyBypass)return;ev.preventDefault();ev.stopImmediatePropagation();policyRequest("Alta o modificación de equipo",$("f-nombre").value+" · "+(editandoId?"Edición":"Alta"),()=>{policyBypass=true;try{enviarFormEquipo({preventDefault(){}});}finally{policyBypass=false;}});},true);
-$("policy-launch").addEventListener("click",policyOpen);$("policy-close").addEventListener("click",policyClose);
-$("policy-savepin").addEventListener("click",()=>{const a=$("policy-newpin").value,b=$("policy-newpin2").value;if(!/^\d{6,12}$/.test(a)||a!==b){alert("El PIN debe tener entre 6 y 12 dígitos y ambas entradas deben coincidir.");return;}policyConfig.pin=policyHash(a);policyConfig.createdAt=ahoraISO();policyPersist();policyUnlocked=true;$("policy-setup").hidden=true;$("policy-admin").hidden=false;policyLog("CONFIGURACIÓN","PIN administrativo creado");policyRender();});
-$("policy-unlock").addEventListener("click",()=>{if(policyHash($("policy-pin").value)!==policyConfig.pin){alert("PIN incorrecto.");policyLog("INTENTO FALLIDO","PIN administrativo incorrecto");return;}policyUnlocked=true;$("policy-login").hidden=true;$("policy-admin").hidden=false;$("policy-pin").value="";policyLog("SESIÓN","Administrador desbloqueado");policyRender();});
-$("policy-lock").addEventListener("click",()=>{policyUnlocked=false;$("policy-admin").hidden=true;$("policy-login").hidden=false;policyLog("SESIÓN","Administrador bloqueado");});
-$("policy-export").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(policyAudit,null,2)],{type:"application/json"});const u=URL.createObjectURL(blob);const a=el("a");a.href=u;a.download="auditoria-politicas-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(u);});
-policyLog("MOTOR INICIADO","Control de aprobación obligatoria activado en este navegador.");
-
 /* ---------- Eventos ---------- */
 $("btn-sim").addEventListener("click", () => {
   const btn = $("btn-sim");
@@ -2160,6 +2338,256 @@ document.addEventListener("keydown", ev => {
   else if (k === "y" || (k === "z" && ev.shiftKey)) { ev.preventDefault(); rehacer(); }
 });
 
+
+/* ---------- Bridge for AI Agent & Policy Engine ---------- */
+function iaFlash(node) {
+  if (!node) return;
+  node.classList.remove("noc-ai-highlight");
+  void node.offsetWidth;
+  node.classList.add("noc-ai-highlight");
+  setTimeout(() => node.classList.remove("noc-ai-highlight"), 2400);
+}
+function iaSetSim(on) {
+  const btn = $("btn-sim");
+  if (on && !simTimer) {
+    simTimer = setInterval(tickTelemetria, 4000);
+    btn.setAttribute("aria-pressed", "true");
+    btn.textContent = "Simular telemetría: ON";
+    mensaje("Simulación activa: las lecturas varían cada 4 s según la carga.", false);
+  } else if (!on && simTimer) {
+    clearInterval(simTimer);
+    simTimer = null;
+    btn.setAttribute("aria-pressed", "false");
+    btn.textContent = "Simular telemetría: OFF";
+    mensaje("Simulación detenida.", false);
+  }
+  window.dispatchEvent(new CustomEvent("noc:updated"));
+}
+
+window.__NOC_BRIDGE__ = {
+  getSnapshot: () => ({
+    meta: { appVersion: APP_VERSION, operador: datos.meta.operador || "", modificado: datos.meta.modificado },
+    racks: datos.racks.map(r => {
+      const pot = Math.round(potenciaRack(r));
+      const au = autonomiaUPS(r);
+      return Object.assign({}, r, {
+        uOcupadas: unidadesOcupadas(r),
+        potenciaW: pot,
+        pesoKg: round1(pesoRack(r)),
+        btuH: Math.round(pot * BTU_POR_W),
+        deltaT: round1(r.tempSalidaC - r.tempC),
+        pduReparto: repartoPDU(r),
+        upsAutonomia: au ? { cargaPct: round1(au.cargaPct), minutos: round1(au.minutos), bateriaPct: au.ups.bateriaPct, nombre: au.ups.nombre } : null
+      });
+    }),
+    equipos: datos.equipos.map(e => Object.assign({}, e)),
+    circuitos: datos.circuitos.map(c => Object.assign({}, c, { etiqueta: etiquetaCable(c), enlace: estadoEnlace(c) })),
+    alertas: datos.alertas.slice(-60),
+    condiciones: condiciones(),
+    bitacoraReciente: datos.bitacora.slice(-20).reverse(),
+    simulacionActiva: !!simTimer
+  }),
+  focusRack: (rackId, view) => {
+    const rack = rackPorId(rackId) || buscarRack(rackId);
+    if (!rack) return { ok: false, message: "Rack no encontrado: " + rackId };
+    rastroAbiertos.add(rack.id);
+    if (view === "frontal" || view === "posterior") vistaRack[rack.id] = view;
+    render();
+    setTimeout(() => {
+      const node = document.querySelector('[data-rack-id="' + rack.id + '"]');
+      if (node) { node.scrollIntoView({ behavior: "smooth", block: "center" }); iaFlash(node); }
+    }, 40);
+    return { ok: true, message: "Rack " + rack.nombre + " desplegado" + (view ? " en vista " + view : "") + "." };
+  },
+  focusEquipment: (equipmentId, portNumber) => {
+    const eq = equipoPorId(equipmentId) || datos.equipos.find(e => e.nombre.toLowerCase() === String(equipmentId).toLowerCase());
+    if (!eq) return { ok: false, message: "Equipo no encontrado: " + equipmentId };
+    rastroAbiertos.add(eq.rackId);
+    seleccionId = eq.id;
+    seleccionMulti.clear();
+    selPuerto = typeof portNumber === "number" ? { eq: eq.id, n: portNumber } : null;
+    render();
+    setTimeout(() => {
+      const eqNode = document.querySelector('[data-eq="' + eq.id + '"]');
+      if (eqNode) { eqNode.scrollIntoView({ behavior: "smooth", block: "center" }); iaFlash(eqNode); }
+      iaFlash($("detalle"));
+    }, 40);
+    return { ok: true, message: "Equipo «" + eq.nombre + "» seleccionado en " + (rackPorId(eq.rackId)?.nombre || eq.rackId) + "." };
+  },
+  focusSection: (section, alertFilter, inventorySearch) => {
+    const map = { resumen: "t-resumen", alertas: "t-alertas", racks: "t-racks", topologia: "t-topo", cableado: "t-cables", inventario: "t-form", telemetria: "t-vivo", bitacora: "t-bit" };
+    if (section === "alertas" && (alertFilter === "activas" || alertFilter === "todas")) { $("f-alertas-filtro").value = alertFilter; renderAlertas(); }
+    if (section === "inventario" && typeof inventorySearch === "string") { $("f-filtro").value = inventorySearch; renderInventario(); }
+    const target = $(map[section] || "t-resumen");
+    if (target) { target.scrollIntoView({ behavior: "smooth", block: "start" }); iaFlash(target); }
+    return { ok: true, message: 'Navegación a sección "' + section + '".' };
+  },
+  acknowledgeAlerts: (mode, alertId, reason) => {
+    const act = datos.alertas.filter(a => !a.resuelta && !a.ack);
+    if (mode === "single" && alertId) {
+      const a = act.find(x => x.id === alertId || x.clave === alertId);
+      if (!a) return { ok: false, message: "No se encontró alerta activa sin reconocer: " + alertId };
+      reconocer(a);
+      if (reason) bitacora("ia-política", a.clave, "Motivo IA: " + reason);
+      guardar(); render();
+      return { ok: true, message: "Alerta «" + a.msg + "» reconocida." };
+    }
+    if (!act.length) return { ok: true, message: "No había alertas activas pendientes de reconocimiento." };
+    act.forEach(reconocer);
+    if (reason) bitacora("ia-política", "", "Reconocimiento masivo IA (" + act.length + "): " + reason);
+    guardar(); render();
+    return { ok: true, message: act.length + " alertas activas reconocidas." };
+  },
+  installEquipment: (opts) => {
+    const rack = rackPorId(opts.rackId) || buscarRack(opts.rackId);
+    if (!rack) return { ok: false, message: "Rack no encontrado." };
+    if (!Object.prototype.hasOwnProperty.call(TIPOS_DEF, opts.tipo)) return { ok: false, message: "Tipo no válido: " + opts.tipo };
+    const u = typeof opts.uInicio === "number" && Number.isInteger(opts.uInicio) ? opts.uInicio : primerHueco(rack, opts.tipo);
+    if (u === null) return { ok: false, message: "No hay hueco libre en " + rack.nombre + "." };
+    const eq = nuevoEquipo(rack.id, opts.tipo, u, (opts.nombre && opts.nombre.trim()) || nombreLibre(rack.id, opts.tipo));
+    if (opts.pdu && ["", "A", "B", "A+B"].includes(opts.pdu)) eq.pdu = opts.pdu;
+    const err = validarEquipo(eq);
+    if (err) return { ok: false, message: err };
+    const s = instantanea();
+    datos.equipos.push(eq); registrarSnap(s);
+    bitacora("alta", eq.id, "IA instaló «" + eq.nombre + "» en " + rack.nombre + " (U " + u + ")");
+    const al = revisarAlertas(); rastroAbiertos.add(rack.id); seleccionId = eq.id; seleccionMulti.clear();
+    guardar(); render(); avisarCriticas(al, "«" + eq.nombre + "» instalado en " + rack.nombre + " U" + u + ".");
+    return { ok: true, message: "«" + eq.nombre + "» (" + eq.id + ") instalado en " + rack.nombre + " U" + u + "." };
+  },
+  moveEquipment: (equipmentId, targetRackId, targetU) => {
+    const eq = equipoPorId(equipmentId);
+    if (!eq) return { ok: false, message: "Equipo no encontrado." };
+    const rack = rackPorId(targetRackId) || buscarRack(targetRackId);
+    if (!rack) return { ok: false, message: "Rack destino no encontrado." };
+    const ok = moverEquipo(eq.id, targetU, rack.id);
+    if (!ok) return { ok: false, message: $("estado").textContent || "No se pudo mover." };
+    rastroAbiertos.add(rack.id); render();
+    return { ok: true, message: "«" + eq.nombre + "» reubicado a " + rack.nombre + " U" + targetU + "." };
+  },
+  updateEquipmentState: (opts) => {
+    const eq = equipoPorId(opts.equipmentId);
+    if (!eq) return { ok: false, message: "Equipo no encontrado." };
+    if (opts.estado && !Object.prototype.hasOwnProperty.call(ESTADOS, opts.estado)) return { ok: false, message: "Estado no válido." };
+    if (typeof opts.tempC === "number" && !tempValida(opts.tempC)) return { ok: false, message: "Temperatura fuera de rango." };
+    if (typeof opts.cargaPct === "number" && (opts.cargaPct < 0 || opts.cargaPct > 100)) return { ok: false, message: "Carga fuera de rango." };
+    if (opts.pdu !== undefined && !["", "A", "B", "A+B"].includes(opts.pdu)) return { ok: false, message: "PDU no válida." };
+    const s = instantanea();
+    if (opts.estado) eq.estado = opts.estado;
+    if (opts.pdu !== undefined) eq.pdu = opts.pdu;
+    if (typeof opts.tempC === "number") eq.tempC = round1(opts.tempC);
+    if (typeof opts.cargaPct === "number") eq.cargaPct = round1(opts.cargaPct);
+    registrarSnap(s); bitacora("edición", eq.id, "IA actualizó «" + eq.nombre + "»");
+    const al = revisarAlertas(); guardar(); render(); avisarCriticas(al, "«" + eq.nombre + "» actualizado.");
+    return { ok: true, message: "«" + eq.nombre + "» actualizado correctamente." };
+  },
+  removeEquipment: (equipmentId) => {
+    const eq = equipoPorId(equipmentId);
+    if (!eq) return { ok: false, message: "Equipo no encontrado." };
+    const n = eq.nombre; quitarEquipo(eq.id);
+    return { ok: true, message: "Equipo «" + n + "» retirado." };
+  },
+  connectCable: (opts) => {
+    const c = { tipo: opts.tipo, longitudM: opts.longitudM, color: Object.prototype.hasOwnProperty.call(COLORES_CABLE, opts.color) ? opts.color : "azul", aEq: opts.aEq, aP: opts.aP, bEq: opts.bEq, bP: opts.bP };
+    const err = validarCable(c);
+    if (err) return { ok: false, message: err };
+    const s = instantanea(); conectarCable(c); registrarSnap(s);
+    const al = revisarAlertas(); guardar(); render(); avisarCriticas(al, "Cable " + c.id + " registrado.");
+    return { ok: true, message: "Cable " + c.id + " conectado (" + etiquetaCable(c) + ")." };
+  },
+  disconnectCable: (cableId) => {
+    if (!cablePorId(cableId)) return { ok: false, message: "Cable no encontrado." };
+    quitarCable(cableId);
+    return { ok: true, message: "Cable " + cableId + " desconectado." };
+  },
+  configurePort: (opts) => {
+    const eq = equipoPorId(opts.equipmentId);
+    if (!eq) return { ok: false, message: "Equipo no encontrado." };
+    const p = puerto(eq, opts.portNumber);
+    if (!p) return { ok: false, message: "Puerto no existe." };
+    const vals = { estado: opts.estado || p.estado, vel: opts.vel || p.vel, vlan: typeof opts.vlan === "number" ? opts.vlan : p.vlan, poe: typeof opts.poe === "boolean" ? opts.poe : p.poe, nota: typeof opts.nota === "string" ? opts.nota : p.nota };
+    if (vals.estado === "up" && !p.cableId) return { ok: false, message: "Puerto sin cable no puede pasar a UP." };
+    aplicarPuerto(eq.id, opts.portNumber, vals);
+    return { ok: true, message: "Puerto P" + opts.portNumber + " de «" + eq.nombre + "» configurado." };
+  },
+  updateRackTelemetry: (opts) => {
+    if (typeof opts.simulationOn === "boolean") iaSetSim(opts.simulationOn);
+    if (opts.rackId) {
+      const rack = rackPorId(opts.rackId) || buscarRack(opts.rackId);
+      if (!rack) return { ok: false, message: "Rack no encontrado." };
+      if (typeof opts.tempC === "number") { if (!tempValida(opts.tempC)) return { ok: false, message: "Temp entrada fuera de rango." }; rack.tempC = round1(opts.tempC); }
+      if (typeof opts.tempSalidaC === "number") { if (!tempValida(opts.tempSalidaC)) return { ok: false, message: "Temp salida fuera de rango." }; rack.tempSalidaC = round1(opts.tempSalidaC); }
+      if (typeof opts.humedadPct === "number") { if (opts.humedadPct < 0 || opts.humedadPct > 100) return { ok: false, message: "Humedad fuera de rango." }; rack.humedadPct = round1(opts.humedadPct); }
+      bitacora("sensor", rack.id, "Telemetría actualizada por IA en " + rack.nombre);
+      muestrear(); const al = revisarAlertas(); guardar(); render(); avisarCriticas(al, "Telemetría actualizada.");
+    }
+    return { ok: true, message: "Telemetría actualizada correctamente." };
+  },
+  toggleRackSecurity: (rackId, sensor, targetValue) => {
+    const rack = rackPorId(rackId) || buscarRack(rackId);
+    if (!rack) return { ok: false, message: "Rack no encontrado." };
+    if (sensor === "puerta") {
+      if ((targetValue === "abierta" || targetValue === "cerrada") && rack.puerta !== targetValue) cambiarPuerta(rack);
+      else if (!targetValue) cambiarPuerta(rack);
+      return { ok: true, message: "Puerta de " + rack.nombre + ": " + rack.puerta + "." };
+    }
+    if (sensor === "humo" || sensor === "agua") {
+      if ((targetValue === "OK" || targetValue === "ALARMA") && rack[sensor] !== targetValue) alternarSensor(rack, sensor);
+      else if (!targetValue) alternarSensor(rack, sensor);
+      return { ok: true, message: "Sensor " + sensor + " de " + rack.nombre + ": " + rack[sensor] + "." };
+    }
+    return { ok: false, message: "Sensor no válido." };
+  },
+  loadExampleLabDirect: () => {
+    const s = instantanea();
+    datos.equipos = []; datos.circuitos = []; datos.meta.contadorCable = 0; seleccionId = null; seleccionMulti.clear(); selPuerto = null;
+    let serie = 0;
+    datos.racks.slice(0, 3).forEach((rack, idx) => {
+      const R = idx + 1, mk = (tipo, u, extra) => {
+        const e = nuevoEquipo(rack.id, tipo, u, nombreLibre(rack.id, tipo));
+        e.estado = "EJEMPLO DIDÁCTICO"; serie++; e.marca = "Ejemplo"; e.serial = "EJ-" + String(serie).padStart(4, "0"); e.ip = def(tipo).puertos || tipo === "ups" ? "10." + R + ".0." + serie : "";
+        e.mac = def(tipo).puertos ? "02:00:00:0" + R + ":00:" + (serie < 16 ? "0" : "") + serie.toString(16).toUpperCase() : ""; e.responsable = "Laboratorio";
+        Object.assign(e, extra || {}); datos.equipos.push(e); return e;
+      };
+      const pp = mk("patchpanel", 42, { modelo: "PP-24-Cat6A" });
+      mk("organizador", 41);
+      const sw1 = mk("switch", 40, { modelo: "SW-24G-PoE", pdu: "A", consumoW: 150 });
+      const sw2 = mk("switch", 39, { modelo: "SW-24G", pdu: "B" });
+      const r1 = mk("router", 38, { modelo: "RT-4G", pdu: "A" });
+      const r2 = mk("router", 37, { modelo: "RT-4G", pdu: "B" });
+      mk("ciego", 36); mk("ciego", 35);
+      let fw = null, srv = null;
+      if (R === 1) { fw = mk("firewall", 34, { modelo: "FW-6G", pdu: "A+B" }); srv = mk("servidor", 32, { modelo: "SRV-2U", pdu: "A+B" }); mk("odf", 31, { modelo: "ODF-12-LC" }); }
+      mk("pdu", 4, { nombre: "PDU A" }); mk("pdu", 3, { nombre: "PDU B" });
+      mk("ups", 1, { modelo: "UPS-1500", bateriaPct: 100, capacidadW: 1500 });
+      const cab = (tipo, color, m, A, pa, B, pb) => { const c = { tipo: tipo, longitudM: m, color: color, aEq: A.id, aP: pa, bEq: B.id, bP: pb }; if (!validarCable(c)) conectarCable(c); };
+      for (let i = 1; i <= 8; i++) cab("cat6a", "azul", 1.5, pp, i, sw1, i);
+      cab("cat6a", "rojo", 1, sw1, 23, sw2, 23); cab("cat6a", "amarillo", 1, sw1, 24, r1, 1); cab("cat6a", "amarillo", 1, sw2, 24, r2, 1);
+      if (fw) cab("cat6a", "naranja", 1, fw, 1, r1, 2);
+      if (srv) cab("cat6a", "verde", 1.5, srv, 1, sw2, 1);
+    });
+    for (let i = 0; i < 2; i++) {
+      const A = datos.equipos.find(e => e.rackId === datos.racks[i].id && e.tipo === "switch"), B = datos.equipos.find(e => e.rackId === datos.racks[i + 1].id && e.tipo === "switch");
+      if (A && B) { const c = { tipo: "om4", longitudM: 12, color: "aqua", aEq: A.id, aP: 21, bEq: B.id, bP: 22 }; if (!validarCable(c)) conectarCable(c); }
+    }
+    registrarSnap(s);
+    bitacora("ejemplo", "", "Laboratorio de ejemplo cargado por IA/Política");
+    rastroAbiertos.add(datos.racks[0].id);
+    revisarAlertas(); guardar(); render();
+    return { ok: true, message: "Laboratorio de ejemplo cargado (3 racks con equipos y cables)." };
+  },
+  purgeAllRacksDirect: () => {
+    const s = instantanea(); datos.equipos = []; datos.circuitos = []; registrarSnap(s);
+    seleccionId = null; seleccionMulti.clear(); selPuerto = null;
+    bitacora("vaciado", "", "Purga general autorizada por Administrador vía Política IA");
+    revisarAlertas(); guardar(); render();
+    return { ok: true, message: "Todos los racks han sido purgados." };
+  },
+  logPolicyBitacora: (accion, ref, detalle) => {
+    bitacora(accion, ref, detalle); guardar(); renderBitacora();
+  }
+};
+
 /* ---------- Inicio ---------- */
 $("logo").innerHTML = LOGO_SVG;
 document.documentElement.style.setProperty("--marca", 'url("data:image/svg+xml;utf8,' + encodeURIComponent(LOGO_SVG) + '")');
@@ -2176,199 +2604,740 @@ if (datos.racks.length > 0) rastroAbiertos.add(datos.racks[0].id);
 muestrear();
 render();
 setInterval(() => { muestrear(); guardar(); actualizarGraficas(); }, MUESTREO_MS);
+</script>
 
-/* ---------- AGENTE IA NOC: módulo aislado añadido al final de la aplicación ---------- */
-(() => {
-  const $ai = id => document.getElementById(id);
-  const feed = $ai("noc-ai-feed");
-  const chat = $ai("noc-ai-chat");
-  const status = $ai("noc-ai-status");
-  const STORAGE = "rack-noc-ai-events.v1";
-  const MAX_EVENTS = 120;
-  let previousSnapshot = null;
-  let events = [];
+</div><!-- /#noc-shell -->
 
-  function safeText(value) { return String(value ?? ""); }
-  function addEvent(message, severity = "info", when = new Date()) {
-    const item = { message: safeText(message).slice(0, 500), severity, when: when.toISOString() };
-    events.unshift(item);
-    events = events.slice(0, MAX_EVENTS);
-    try { localStorage.setItem(STORAGE, JSON.stringify(events)); } catch (_) {}
-    renderEvents();
-  }
-  function renderEvents() {
-    feed.replaceChildren();
-    if (!events.length) {
-      const empty = document.createElement("div");
-      empty.className = "noc-event";
-      empty.textContent = "No hay novedades detectadas todavía.";
-      feed.append(empty);
-      return;
+<button type="button" id="ia-fab" hidden aria-label="Abrir Agente IA y Políticas">
+  <span id="ia-fab-ico"></span>
+  <span>Agente IA · Políticas</span>
+  <span id="ia-fab-crit" class="ia-pill-crit" hidden></span>
+  <span id="ia-fab-pend" class="ia-pill-pend" hidden></span>
+</button>
+
+<script>
+(function () {
+  "use strict";
+
+  const POLICY_KEY = "noc-policy-engine.v1";
+
+  const POLICY_CATALOG = [
+    { key: "navigate_ui", label: "Navegación e inspección visual", description: "Abrir acordeones de rack, cambiar vista frontal/posterior y seleccionar equipos.", risk: "low", def: "auto" },
+    { key: "ack_alert", label: "Reconocer alertas del NOC", description: "Marcar alertas activas como reconocidas con usuario/motivo.", risk: "low", def: "approve" },
+    { key: "install_equipment", label: "Instalar equipos en racks", description: "Agregar switches, routers, servidores o paneles ciegos.", risk: "medium", def: "approve" },
+    { key: "move_equipment", label: "Reubicar equipos (U / Rack)", description: "Mover dispositivos entre unidades U o entre gabinetes.", risk: "medium", def: "approve" },
+    { key: "edit_equipment", label: "Editar estado, PDU o carga de equipo", description: "Modificar temperatura, carga %, alimentación PDU o estado LED.", risk: "medium", def: "approve" },
+    { key: "remove_equipment", label: "Retirar / eliminar equipos", description: "Desmontar un dispositivo del rack y desconectar sus cables.", risk: "high", def: "approve" },
+    { key: "manage_cables", label: "Registrar o desconectar cables", description: "Crear o eliminar enlaces físicos TIA-606 entre puertos.", risk: "high", def: "approve" },
+    { key: "manage_ports", label: "Configurar puertos (UP/DOWN/VLAN/PoE)", description: "Cambiar estado operativo, velocidad, VLAN o PoE de un puerto.", risk: "medium", def: "approve" },
+    { key: "modify_telemetry", label: "Modificar telemetría o simulación", description: "Aplicar lecturas de temperatura/humedad o encender/apagar simulador.", risk: "medium", def: "approve" },
+    { key: "security_sensors", label: "Seguridad física (puerta/humo/agua)", description: "Abrir/cerrar puertas de rack o probar alarmas críticas.", risk: "high", def: "approve" },
+    { key: "bulk_operations", label: "Cargar laboratorio de ejemplo", description: "Reemplaza equipos y cables actuales con plantilla de 3 racks.", risk: "high", def: "approve" },
+    { key: "purge_or_reset", label: "Purgar todos los racks", description: "Eliminación total de equipos y cableado del datacenter.", risk: "critical", def: "deny" }
+  ];
+
+  const POLICY_PRESETS = {
+    supervised: {
+      label: "Supervisado (Admin aprueba cambios)",
+      rules: { navigate_ui: "auto", ack_alert: "approve", install_equipment: "approve", move_equipment: "approve", edit_equipment: "approve", remove_equipment: "approve", manage_cables: "approve", manage_ports: "approve", modify_telemetry: "approve", security_sensors: "approve", bulk_operations: "approve", purge_or_reset: "deny" }
+    },
+    audit: {
+      label: "Solo auditoría (IA solo consulta)",
+      rules: { navigate_ui: "auto", ack_alert: "deny", install_equipment: "deny", move_equipment: "deny", edit_equipment: "deny", remove_equipment: "deny", manage_cables: "deny", manage_ports: "deny", modify_telemetry: "deny", security_sensors: "deny", bulk_operations: "deny", purge_or_reset: "deny" }
+    },
+    autonomous: {
+      label: "Autónomo (excepto purgas)",
+      rules: { navigate_ui: "auto", ack_alert: "auto", install_equipment: "auto", move_equipment: "auto", edit_equipment: "auto", remove_equipment: "approve", manage_cables: "auto", manage_ports: "auto", modify_telemetry: "auto", security_sensors: "approve", bulk_operations: "approve", purge_or_reset: "approve" }
     }
-    events.forEach(item => {
-      const node = document.createElement("div");
-      node.className = "noc-event " + (item.severity === "crit" ? "crit" : item.severity === "warn" ? "warn" : "");
-      const msg = document.createElement("div");
-      msg.textContent = item.message;
-      const time = document.createElement("small");
-      time.textContent = new Date(item.when).toLocaleString();
-      node.append(msg, time);
-      feed.append(node);
-    });
-  }
-  function stableSnapshot() {
-    // Excluye el historial de muestreo para no generar avisos falsos cada 5 segundos.
-    return JSON.stringify({
-      racks: datos.racks,
-      equipos: datos.equipos,
-      circuitos: datos.circuitos,
-      alertas: datos.alertas,
-      bitacora: datos.bitacora
-    });
-  }
-  function diffObjects(before, after, path = "sistema", out = []) {
-    if (out.length >= 30 || before === after) return out;
-    if (before === null || after === null || typeof before !== "object" || typeof after !== "object") {
-      if (JSON.stringify(before) !== JSON.stringify(after)) out.push(path + ": " + safeText(before) + " → " + safeText(after));
-      return out;
-    }
-    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
-    for (const key of keys) {
-      if (out.length >= 30) break;
-      const nextPath = path + "." + key;
-      if (!(key in before)) out.push(nextPath + ": añadido");
-      else if (!(key in after)) out.push(nextPath + ": eliminado");
-      else diffObjects(before[key], after[key], nextPath, out);
-    }
-    return out;
-  }
-  function snapshotObject() {
+  };
+
+  const TOOL_POLICY_MAP = {
+    ui_focus_rack: "navigate_ui",
+    ui_focus_equipment: "navigate_ui",
+    ui_focus_section: "navigate_ui",
+    acknowledge_alerts: "ack_alert",
+    install_equipment: "install_equipment",
+    move_equipment: "move_equipment",
+    update_equipment_state: "edit_equipment",
+    remove_equipment: "remove_equipment",
+    connect_cable: "manage_cables",
+    disconnect_cable: "manage_cables",
+    configure_port: "manage_ports",
+    update_rack_telemetry: "modify_telemetry",
+    toggle_rack_security: "security_sensors",
+    load_example_lab: "bulk_operations",
+    purge_all_racks: "purge_or_reset"
+  };
+
+  const RISK_INFO = {
+    low: { text: "Riesgo bajo", cls: "ia-txt-ok" },
+    medium: { text: "Riesgo medio", cls: "ia-txt-warn" },
+    high: { text: "Riesgo alto", cls: "ia-txt-warn" },
+    critical: { text: "Crítico", cls: "ia-txt-crit" }
+  };
+
+  const QUICK_PROMPTS = [
+    "Resume las fallas críticas y estado de cada rack",
+    "Muéstrame el rack con mayor temperatura o riesgo",
+    "Revisa enlaces caídos y balanceo de PDU A/B",
+    "Instala un panel ciego en el primer hueco libre de Rack 1",
+    "Reconoce todas las alertas activas"
+  ];
+
+  const SVG_ICONS = {
+    bot: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>',
+    sparkles: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>',
+    ok: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>',
+    warn: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+    crit: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>',
+    eye: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>',
+    temp: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4da3ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>',
+    zap: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#e3b341" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>',
+    cpu: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#56d364" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/></svg>',
+    lock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    shieldOk: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#56d364" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>'
+  };
+
+  function defaultPolicyData() {
     return {
-      racks: datos.racks,
-      equipos: datos.equipos,
-      circuitos: datos.circuitos,
-      alertas: datos.alertas,
-      bitacora: datos.bitacora
+      policy: { role: "admin", adminPin: "1234", rules: Object.assign({}, POLICY_PRESETS.supervised.rules), rackLocks: {} },
+      requests: [],
+      audit: []
     };
   }
-  function scanChanges() {
+  function loadPolicyData() {
     try {
-      const current = stableSnapshot();
-      if (previousSnapshot === null) {
-        previousSnapshot = current;
-        status.textContent = "Vigilancia activa · revisión cada 2 segundos · primera captura completada";
-        return;
-      }
-      if (current !== previousSnapshot) {
-        const oldObj = JSON.parse(previousSnapshot);
-        const changes = diffObjects(oldObj, snapshotObject());
-        previousSnapshot = current;
-        if (changes.length) {
-          changes.forEach(change => addEvent(change, /ALARMA|crit|temperatura|humedad|down|eliminado/i.test(change) ? "warn" : "info"));
-          status.textContent = "Vigilancia activa · " + changes.length + " cambio(s) detectado(s)";
-        }
-      }
-    } catch (err) {
-      status.textContent = "Vigilancia activa · no se pudo comparar una captura";
+      const raw = localStorage.getItem(POLICY_KEY);
+      if (!raw) return defaultPolicyData();
+      const p = JSON.parse(raw);
+      const base = defaultPolicyData();
+      return {
+        policy: {
+          role: p?.policy?.role === "operator" ? "operator" : "admin",
+          adminPin: typeof p?.policy?.adminPin === "string" && p.policy.adminPin.length >= 4 ? p.policy.adminPin : "1234",
+          rules: Object.assign({}, base.policy.rules, p?.policy?.rules || {}),
+          rackLocks: Object.assign({}, p?.policy?.rackLocks || {})
+        },
+        requests: Array.isArray(p?.requests) ? p.requests : [],
+        audit: Array.isArray(p?.audit) ? p.audit : []
+      };
+    } catch (_e) { return defaultPolicyData(); }
+  }
+  function savePolicyData() {
+    try { localStorage.setItem(POLICY_KEY, JSON.stringify(state)); } catch (_e) {}
+  }
+
+  let state = loadPolicyData();
+  let drawerOpen = true;
+  let activeTab = "reports";
+  let policySubTab = "approvals";
+  let showPinEdit = false;
+  let pinError = "";
+  let currentReport = null;
+  let reportError = "";
+  let loadingReport = false;
+  let sendingChat = false;
+  let chatMessages = [{
+    id: "welcome",
+    role: "model",
+    timestamp: new Date().toISOString(),
+    text: "Soy el Agente IA NOC de RACK ORDEN Y SEGURIDAD. Puedo inspeccionar fallas por rack, generar informes interactivos, navegar por la consola y proponer cambios sujetos a tu Motor de Políticas como Administrador."
+  }];
+
+  function syncDrawerVisibility() {
+    const drawer = document.getElementById("ia-drawer");
+    const fab = document.getElementById("ia-fab");
+    drawer.hidden = !drawerOpen;
+    fab.hidden = drawerOpen;
+    document.body.classList.toggle("ia-drawer-open", drawerOpen);
+  }
+
+  function autoCloseIfMobile() {
+    // Mantiene el panel visible en todo tamaño; en pantallas menores a 960px el panel está arriba y la página se desplaza libremente hacia el rack o sección enfocada.
+  }
+
+  function escHtml(s) {
+    return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function extractTargetRackId(toolName, args, snap) {
+    if (typeof args.targetRackId === "string" && args.targetRackId) return args.targetRackId;
+    if (typeof args.rackId === "string" && args.rackId) return args.rackId;
+    if (typeof args.equipmentId === "string") {
+      const eq = snap.equipos.find(e => e.id === args.equipmentId);
+      if (eq) return eq.rackId;
+    }
+    if (typeof args.aEq === "string") {
+      const eq = snap.equipos.find(e => e.id === args.aEq);
+      if (eq) return eq.rackId;
+    }
+    return undefined;
+  }
+
+  function describeAction(toolName, args, snap) {
+    const rackName = id => snap.racks.find(r => r.id === id)?.nombre || id || "?";
+    const eqName = id => snap.equipos.find(e => e.id === id)?.nombre || id || "?";
+    switch (toolName) {
+      case "ui_focus_rack": return "Enfocar " + rackName(args.rackId) + (args.view ? " (" + args.view + ")" : "");
+      case "ui_focus_equipment": return "Inspeccionar «" + eqName(args.equipmentId) + "»";
+      case "ui_focus_section": return "Ir a sección " + args.section;
+      case "acknowledge_alerts": return args.mode === "single" ? "Reconocer alerta " + args.alertId : "Reconocer todas las alertas activas";
+      case "install_equipment": return "Instalar " + args.tipo + " en " + rackName(args.rackId) + (args.uInicio ? " U" + args.uInicio : " (primer hueco)");
+      case "move_equipment": return "Mover «" + eqName(args.equipmentId) + "» a " + rackName(args.targetRackId) + " U" + args.targetU;
+      case "update_equipment_state": return "Actualizar parámetros de «" + eqName(args.equipmentId) + "»";
+      case "remove_equipment": return "Retirar «" + eqName(args.equipmentId) + "»";
+      case "connect_cable": return "Conectar cable " + args.tipo + " (" + eqName(args.aEq) + " P" + args.aP + " ⇄ " + eqName(args.bEq) + " P" + args.bP + ")";
+      case "disconnect_cable": return "Desconectar cable " + args.cableId;
+      case "configure_port": return "Configurar P" + args.portNumber + " de «" + eqName(args.equipmentId) + "»";
+      case "update_rack_telemetry": return args.rackId ? "Actualizar telemetría de " + rackName(args.rackId) : "Cambiar simulación a " + (args.simulationOn ? "ON" : "OFF");
+      case "toggle_rack_security": return "Alternar sensor " + args.sensor + " en " + rackName(args.rackId);
+      case "load_example_lab": return "Cargar laboratorio de ejemplo";
+      case "purge_all_racks": return "PURGAR todos los equipos y cables";
+      default: return toolName;
     }
   }
-  function summarizeSystem() {
+
+  function evaluatePolicy(toolName, args, snap) {
+    const policyKey = TOOL_POLICY_MAP[toolName] || "edit_equipment";
+    const rule = state.policy.rules[policyKey] || "approve";
+    const targetRackId = extractTargetRackId(toolName, args, snap);
+    const rackLock = targetRackId ? (state.policy.rackLocks[targetRackId] || "normal") : "normal";
+
+    if (policyKey === "navigate_ui") {
+      return { policyKey, targetRackId, decision: rule === "deny" ? "DENIED_POLICY" : "AUTO_ALLOWED", reasonDetail: rule === "deny" ? "Navegación denegada por política." : "Navegación visual permitida." };
+    }
+    if (rackLock === "read_only") {
+      return { policyKey, targetRackId, decision: "DENIED_POLICY", reasonDetail: "El gabinete está protegido en modo SOLO LECTURA." };
+    }
+    if (rule === "deny") {
+      return { policyKey, targetRackId, decision: "DENIED_POLICY", reasonDetail: 'La política "' + policyKey + '" está configurada como DENEGADA.' };
+    }
+    if (rackLock === "require_approval" || rule === "approve") {
+      return { policyKey, targetRackId, decision: "QUEUED_APPROVAL", reasonDetail: rackLock === "require_approval" ? "El rack exige aprobación del Administrador." : 'La acción "' + policyKey + '" requiere aprobación del Administrador.' };
+    }
+    return { policyKey, targetRackId, decision: "AUTO_ALLOWED", reasonDetail: "Permitido automáticamente por política." };
+  }
+
+  function executeBridgeTool(toolName, args) {
+    const b = window.__NOC_BRIDGE__;
+    switch (toolName) {
+      case "ui_focus_rack": return b.focusRack(args.rackId, args.view);
+      case "ui_focus_equipment": return b.focusEquipment(args.equipmentId, args.portNumber);
+      case "ui_focus_section": return b.focusSection(args.section, args.alertFilter, args.inventorySearch);
+      case "acknowledge_alerts": return b.acknowledgeAlerts(args.mode || "all", args.alertId, args.reason);
+      case "install_equipment": return b.installEquipment(args);
+      case "move_equipment": return b.moveEquipment(args.equipmentId, args.targetRackId, args.targetU);
+      case "update_equipment_state": return b.updateEquipmentState(args);
+      case "remove_equipment": return b.removeEquipment(args.equipmentId);
+      case "connect_cable": return b.connectCable(args);
+      case "disconnect_cable": return b.disconnectCable(args.cableId);
+      case "configure_port": return b.configurePort(args);
+      case "update_rack_telemetry": return b.updateRackTelemetry(args);
+      case "toggle_rack_security": return b.toggleRackSecurity(args.rackId, args.sensor, args.targetValue);
+      case "load_example_lab": return b.loadExampleLabDirect();
+      case "purge_all_racks": return b.purgeAllRacksDirect();
+      default: return { ok: false, message: "Herramienta no reconocida: " + toolName };
+    }
+  }
+
+  function appendAudit(toolName, policyKey, decision, detail) {
+    const snap = window.__NOC_BRIDGE__.getSnapshot();
+    const actor = snap.meta.operador || (state.policy.role === "admin" ? "Administrador" : "Operador");
+    state.audit.push({ id: "aud-" + Date.now().toString(36), timestamp: new Date().toISOString(), actor, toolName, policyKey, decision, detail });
+    if (state.audit.length > 200) state.audit.shift();
+    window.__NOC_BRIDGE__.logPolicyBitacora("política", policyKey, "[" + decision + "] " + detail);
+    savePolicyData();
+  }
+
+  function processToolCall(toolName, args) {
+    const snap = window.__NOC_BRIDGE__.getSnapshot();
+    const ev = evaluatePolicy(toolName, args || {}, snap);
+    const summary = describeAction(toolName, args || {}, snap);
+
+    if (ev.decision === "DENIED_POLICY") {
+      appendAudit(toolName, ev.policyKey, "DENIED_POLICY", summary + " — " + ev.reasonDetail);
+      return { trace: { policyKey: ev.policyKey, decision: "DENIED_POLICY", summary: summary + " (" + ev.reasonDetail + ")" }, response: { status: "DENIED_BY_POLICY", message: ev.reasonDetail } };
+    }
+    if (ev.decision === "QUEUED_APPROVAL") {
+      const meta = POLICY_CATALOG.find(m => m.key === ev.policyKey);
+      const reqId = "CR-" + String(state.requests.length + 1).padStart(3, "0") + "-" + Math.random().toString(36).slice(2, 5).toUpperCase();
+      state.requests.push({
+        id: reqId, createdAt: new Date().toISOString(), toolName, policyKey: ev.policyKey, args: args || {},
+        targetRackId: ev.targetRackId, summary, reason: args?.reason || ev.reasonDetail, risk: meta?.risk || "medium", status: "pending"
+      });
+      appendAudit(toolName, ev.policyKey, "QUEUED_APPROVAL", "Solicitud " + reqId + " en espera de aprobación: " + summary);
+      savePolicyData();
+      return { trace: { policyKey: ev.policyKey, decision: "QUEUED_APPROVAL", summary, requestId: reqId }, response: { status: "PENDING_ADMIN_APPROVAL", requestId: reqId, summary } };
+    }
+    const execRes = executeBridgeTool(toolName, args || {});
+    appendAudit(toolName, ev.policyKey, "AUTO_ALLOWED", summary + " → " + execRes.message);
+    return { trace: { policyKey: ev.policyKey, decision: "AUTO_ALLOWED", summary: summary + " → " + execRes.message }, response: { status: execRes.ok ? "EXECUTED" : "EXECUTION_FAILED", message: execRes.message } };
+  }
+
+  function approveRequest(reqId) {
+    if (state.policy.role !== "admin") return;
+    const req = state.requests.find(r => r.id === reqId && r.status === "pending");
+    if (!req) return;
+    const execRes = executeBridgeTool(req.toolName, req.args);
+    req.status = execRes.ok ? "approved" : "failed";
+    req.resolvedAt = new Date().toISOString();
+    req.executionMessage = execRes.message;
+    appendAudit(req.toolName, req.policyKey, "APPROVED_ADMIN", "Solicitud " + req.id + " aprobada: " + req.summary + " → " + execRes.message);
+    chatMessages.push({ id: "m-" + Date.now(), role: "model", timestamp: new Date().toISOString(), text: (execRes.ok ? "Solicitud " + req.id + " aprobada y ejecutada: " : "Aprobada con error: ") + execRes.message });
+    savePolicyData();
+    renderDrawer();
+  }
+
+  function rejectRequest(reqId) {
+    if (state.policy.role !== "admin") return;
+    const req = state.requests.find(r => r.id === reqId && r.status === "pending");
+    if (!req) return;
+    req.status = "rejected";
+    req.resolvedAt = new Date().toISOString();
+    req.executionMessage = "Rechazada por el Administrador.";
+    appendAudit(req.toolName, req.policyKey, "REJECTED_ADMIN", "Solicitud " + req.id + " rechazada: " + req.summary);
+    chatMessages.push({ id: "m-" + Date.now(), role: "model", timestamp: new Date().toISOString(), text: "Solicitud " + req.id + " (" + req.summary + ") rechazada." });
+    savePolicyData();
+    renderDrawer();
+  }
+
+  function getRackConds(rack, snap) {
+    const eqIds = new Set(snap.equipos.filter(e => e.rackId === rack.id).map(e => e.id));
+    return snap.condiciones.filter(c => c.clave.endsWith(":" + rack.id) || [...eqIds].some(id => c.clave.includes(id)));
+  }
+
+  function buildLocalReport(snap, targetRackId) {
+    const list = targetRackId ? snap.racks.filter(r => r.id === targetRackId) : snap.racks;
+    let worst = "ok";
+    const racksOut = list.map(r => {
+      const conds = getRackConds(r, snap);
+      const sev = conds.some(c => c.sev === "crit") ? "crit" : (conds.some(c => c.sev === "warn") ? "warn" : "ok");
+      if (sev === "crit") worst = "crit";
+      else if (sev === "warn" && worst === "ok") worst = "warn";
+      const eqs = snap.equipos.filter(e => e.rackId === r.id);
+      const faults = conds.map(c => {
+        const me = eqs.find(e => c.clave.includes(e.id) || c.origen === e.nombre);
+        return { severity: c.sev, category: c.clave.startsWith("lk:") ? "Cableado" : (c.clave.startsWith("pw:") || c.clave.startsWith("up:") ? "Energía" : (c.clave.startsWith("hm:") || c.clave.startsWith("ag:") || c.clave.startsWith("pu:") ? "Seguridad" : "Térmica")), description: c.msg, equipmentId: me ? me.id : "" };
+      });
+      const recs = [];
+      const freeU = r.alturaU - r.uOcupadas;
+      if (freeU > 0) {
+        recs.push({ label: "Instalar panel ciego en " + r.nombre + " (" + freeU + " U libres)", impact: "Reduce recirculación de aire caliente", suggestedTool: "install_equipment", suggestedArgsJson: JSON.stringify({ rackId: r.id, tipo: "ciego", reason: "Mitigar recirculación térmica" }) });
+      }
+      if (conds.length > 0) {
+        recs.push({ label: "Enfocar " + r.nombre + " para inspección visual", impact: "Navega y resalta el gabinete en consola", suggestedTool: "ui_focus_rack", suggestedArgsJson: JSON.stringify({ rackId: r.id, view: "frontal" }) });
+      }
+      return { rackId: r.id, rackName: r.nombre, severity: sev, headline: r.uOcupadas + "/" + r.alturaU + " U · " + r.potenciaW + " W · Entrada " + r.tempC.toFixed(1) + " °C · ΔT " + r.deltaT.toFixed(1) + " °C", faults, recommendations: recs };
+    });
+    const totalCrit = snap.condiciones.filter(c => c.sev === "crit").length;
+    const totalWarn = snap.condiciones.filter(c => c.sev === "warn").length;
     return {
-      fechaCaptura: new Date().toISOString(),
-      racks: datos.racks.map(r => ({
-        id:r.id, nombre:r.nombre, ubicacion:r.ubicacion, alturaU:r.alturaU,
-        tempEntradaC:r.tempC, tempSalidaC:r.tempSalidaC, humedadPct:r.humedadPct,
-        puerta:r.puerta, humo:r.humo, agua:r.agua, capacidadW:r.capacidadW
-      })),
-      equipos: datos.equipos.map(e => ({
-        id:e.id, rackId:e.rackId, nombre:e.nombre, tipo:e.tipo, uInicio:e.uInicio,
-        alturaU:e.alturaU, consumoW:e.consumoW, cargaPct:e.cargaPct, tempC:e.tempC,
-        pdu:e.pdu, estado:e.estado, marca:e.marca, modelo:e.modelo, ip:e.ip,
-        puertos:e.puertos.map(p => ({n:p.n,estado:p.estado,cableId:p.cableId,vel:p.vel,vlan:p.vlan}))
-      })),
-      cables: datos.circuitos.map(c => ({
-        id:c.id,tipo:c.tipo,longitudM:c.longitudM,aEq:c.aEq,aP:c.aP,bEq:c.bEq,bP:c.bP
-      })),
-      alertas: datos.alertas.slice(-100).map(a => ({
-        fecha:a.fecha,sev:a.sev,origen:a.origen,msg:a.msg,ack:a.ack,resuelta:a.resuelta
-      })),
-      bitacoraReciente: datos.bitacora.slice(-60).map(b => ({
-        fecha:b.fecha,accion:b.accion,detalle:b.detalle,usuario:b.usuario
-      }))
+      title: targetRackId ? "Informe Técnico IA · " + (list[0]?.nombre || targetRackId) : "Informe Técnico del Datacenter",
+      executiveSummary: "Se analizaron " + list.length + " gabinete(s) y " + snap.equipos.length + " equipo(s). Condiciones actuales: " + totalCrit + " críticas y " + totalWarn + " advertencias.",
+      overallSeverity: worst,
+      racks: racksOut
     };
   }
-  function addChat(text, who) {
-    const node = document.createElement("div");
-    node.className = "noc-msg " + who;
-    node.textContent = text;
-    chat.append(node);
-    chat.scrollTop = chat.scrollHeight;
-    return node;
-  }
-  async function askAI(question) {
-    const payload = { question, system: summarizeSystem() };
-    const response = await fetch("/api/assistant", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(payload)
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "No se pudo consultar el servicio de IA.");
-    return data.answer || "No recibí una respuesta de texto.";
-  }
-  $ai("noc-ai-form").addEventListener("submit", async ev => {
-    ev.preventDefault();
-    const input = $ai("noc-ai-question");
-    const question = input.value.trim();
-    if (!question) return;
-    addChat(question, "user");
-    input.value = "";
-    const pending = addChat("Analizando los datos actuales…", "bot");
-    $ai("noc-ai-send").disabled = true;
+
+  async function generateReport(targetRackId) {
+    loadingReport = true;
+    reportError = "";
+    renderDrawer();
+    const snap = window.__NOC_BRIDGE__.getSnapshot();
     try {
-      const answer = await askAI(question);
-      pending.textContent = answer;
-    } catch (err) {
-      pending.textContent = "No fue posible conectar con el agente: " + err.message +
-        "\nComprueba que abriste la consola desde http://localhost:3000 y que el servidor tiene OPENAI_API_KEY configurada.";
-    } finally {
-      $ai("noc-ai-send").disabled = false;
-      chat.scrollTop = chat.scrollHeight;
-    }
-  });
-  $ai("noc-ai-scan").addEventListener("click", async () => {
-    const question = "Analiza el estado actual del datacenter. Resume novedades, riesgos, anomalías leves, prioridades y recomendaciones de navegación. Distingue hechos de posibles causas.";
-    addChat(question, "user");
-    const pending = addChat("Analizando racks, equipos, puertos, cableado y alertas…", "bot");
-    try { pending.textContent = await askAI(question); }
-    catch (err) { pending.textContent = "No se pudo completar el análisis: " + err.message; }
-  });
-  $ai("noc-ai-clear").addEventListener("click", () => {
-    events = [];
-    try { localStorage.removeItem(STORAGE); } catch (_) {}
-    renderEvents();
-    status.textContent = "Novedades visibles limpiadas; la vigilancia continúa activa.";
-  });
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE) || "[]");
-    if (Array.isArray(saved)) events = saved.slice(0, MAX_EVENTS);
-  } catch (_) {}
-  renderEvents();
-  scanChanges();
-  window.setInterval(scanChanges, 2000);
-  window.addEventListener("storage", ev => {
-    if (ev.key === "consola-racks.v2") {
-      try {
-        const newer = JSON.parse(ev.newValue);
-        if (newer && Array.isArray(newer.racks) && Array.isArray(newer.equipos)) {
-          // Otra pestaña modificó la consola. Se informa; no se sobrescribe el estado local.
-          addEvent("Otra pestaña del navegador actualizó la base de datos de la consola.", "info");
+      if (location.protocol.startsWith("http")) {
+        const res = await fetch("/api/ai/report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nocState: snap, targetRackId }) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.report) { currentReport = data.report; loadingReport = false; renderDrawer(); return; }
         }
-      } catch (_) {}
+      }
+    } catch (_e) {}
+    currentReport = buildLocalReport(snap, targetRackId);
+    loadingReport = false;
+    renderDrawer();
+  }
+
+  function runOfflineAgent(prompt, snap) {
+    const p = prompt.toLowerCase();
+    const rackMatch = snap.racks.find(r => p.includes(r.nombre.toLowerCase()) || p.includes(r.id.toLowerCase()));
+    const traces = [];
+
+    if (/ejemplo|laboratorio|poblar/.test(p)) {
+      traces.push(processToolCall("load_example_lab", { reason: "Solicitud desde Agente IA" }).trace);
+      return { text: "Procesé la solicitud para cargar el laboratorio de ejemplo.", traces };
+    }
+    if (/purga|vaciar|borrar todo/.test(p)) {
+      traces.push(processToolCall("purge_all_racks", { reason: "Solicitud de purga desde Agente IA" }).trace);
+      return { text: "Solicitud de purga evaluada por el Motor de Políticas.", traces };
+    }
+    if (/reconoc|ack/.test(p)) {
+      traces.push(processToolCall("acknowledge_alerts", { mode: "all", reason: "Reconocimiento solicitado por operador" }).trace);
+      return { text: "Reconocimiento de alertas evaluado mediante política.", traces };
+    }
+    if (/instala|agrega|coloca/.test(p)) {
+      const tipo = /switch/.test(p) ? "switch" : (/router/.test(p) ? "router" : (/firewall/.test(p) ? "firewall" : (/servidor/.test(p) ? "servidor" : (/ups/.test(p) ? "ups" : "ciego"))));
+      const target = rackMatch || snap.racks[0];
+      traces.push(processToolCall("install_equipment", { rackId: target.id, tipo, reason: "Instalación solicitada al Agente IA" }).trace);
+      return { text: "Evalué la instalación de " + tipo + " en " + target.nombre + " según las políticas activas.", traces };
+    }
+    if (/mayor temperatura|caliente|riesgo|enfoca|muéstrame|muestrame|posterior|ver /.test(p)) {
+      const hottest = rackMatch || snap.racks.slice().sort((a, b) => b.tempC - a.tempC)[0];
+      const view = /posterior|atras|atrás|cable/.test(p) ? "posterior" : "frontal";
+      if (hottest) traces.push(processToolCall("ui_focus_rack", { rackId: hottest.id, view }).trace);
+      if (/alerta/.test(p)) traces.push(processToolCall("ui_focus_section", { section: "alertas" }).trace);
+      else if (/topolog/.test(p)) traces.push(processToolCall("ui_focus_section", { section: "topologia" }).trace);
+      const conds = hottest ? getRackConds(hottest, snap) : [];
+      return {
+        text: hottest ? "Enfoqué " + hottest.nombre + " (" + hottest.tempC.toFixed(1) + " °C, ΔT " + hottest.deltaT.toFixed(1) + " °C, " + hottest.potenciaW + " W). " + (conds.length ? "Fallas detectadas:\n• " + conds.map(c => c.msg).join("\n• ") : "Sin fallas activas en este gabinete.") : "No hay racks.",
+        traces
+      };
+    }
+    const lines = snap.racks.map(r => {
+      const conds = getRackConds(r, snap);
+      return "• " + r.nombre + ": " + r.uOcupadas + "/" + r.alturaU + " U, " + r.potenciaW + " W (PDU A " + Math.round(r.pduReparto.A) + "W / B " + Math.round(r.pduReparto.B) + "W), " + r.tempC.toFixed(1) + " °C, " + (conds.length ? conds.length + " falla(s): " + conds.map(c => c.msg).join("; ") : "NORMAL");
+    });
+    const downLinks = snap.circuitos.filter(c => c.enlace !== "UP");
+    if (downLinks.length) lines.push("• Enlaces DOWN: " + downLinks.map(c => c.id + " (" + c.etiqueta + ")").join(", "));
+    return { text: "Diagnóstico en vivo del Datacenter:\n" + lines.join("\n"), traces };
+  }
+
+  async function sendChat(customText) {
+    const inp = document.getElementById("ia-chat-input");
+    const prompt = (customText ?? (inp ? inp.value : "")).trim();
+    if (!prompt || sendingChat) return;
+    if (!customText && inp) inp.value = "";
+
+    chatMessages.push({ id: "u-" + Date.now(), role: "user", timestamp: new Date().toISOString(), text: prompt });
+    sendingChat = true;
+    renderDrawer();
+
+    const snap = window.__NOC_BRIDGE__.getSnapshot();
+    try {
+      if (location.protocol.startsWith("http")) {
+        const hist = chatMessages.filter(m => m.id !== "welcome").slice(-10).map(m => ({ role: m.role, text: m.text }));
+        const res1 = await fetch("/api/ai/agent", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: prompt, history: hist, nocState: snap, policies: state.policy.rules, role: state.policy.role, rackLocks: state.policy.rackLocks })
+        });
+        if (res1.ok) {
+          const data1 = await res1.json();
+          const fcs = Array.isArray(data1.functionCalls) ? data1.functionCalls : [];
+          if (fcs.length === 0) {
+            chatMessages.push({ id: "m-" + Date.now(), role: "model", timestamp: new Date().toISOString(), text: data1.text || "Listo." });
+            sendingChat = false; renderDrawer(); return;
+          }
+          const traces = [], functionResponses = [];
+          for (const fc of fcs) {
+            const out = processToolCall(fc.name, fc.args || {});
+            traces.push(out.trace);
+            functionResponses.push({ id: fc.id, name: fc.name, response: out.response });
+          }
+          const res2 = await fetch("/api/ai/agent", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: prompt, history: hist, nocState: window.__NOC_BRIDGE__.getSnapshot(), policies: state.policy.rules, role: state.policy.role, rackLocks: state.policy.rackLocks, continuation: { previousContent: data1.previousContent, functionResponses } })
+          });
+          if (res2.ok) {
+            const data2 = await res2.json();
+            chatMessages.push({ id: "m-" + Date.now(), role: "model", timestamp: new Date().toISOString(), text: data2.text || "Operación procesada.", traces });
+            sendingChat = false; renderDrawer(); return;
+          }
+        }
+      }
+    } catch (_e) {}
+
+    const offline = runOfflineAgent(prompt, snap);
+    chatMessages.push({ id: "m-" + Date.now(), role: "model", timestamp: new Date().toISOString(), text: offline.text, traces: offline.traces });
+    sendingChat = false;
+    renderDrawer();
+  }
+
+  function renderReportsTab(body, snap) {
+    const crit = snap.condiciones.filter(c => c.sev === "crit").length;
+    const warn = snap.condiciones.filter(c => c.sev === "warn").length;
+    let h = '<div class="ia-card"><div class="ia-row-between"><div><strong style="font-size:13.5px">Estado en vivo e informes interactivos</strong><div style="font-size:11.5px;color:#9aa7b4;margin-top:2px">' + snap.racks.length + ' racks · ' + snap.equipos.length + ' equipos · <span class="' + (crit ? "ia-txt-crit" : "ia-txt-ok") + '">' + crit + ' críticas</span> · <span class="' + (warn ? "ia-txt-warn" : "ia-txt-muted") + '">' + warn + ' advertencias</span></div></div>' +
+      '<button type="button" class="ia-btn-primary" id="ia-btn-full-rep"' + (loadingReport ? " disabled" : "") + '>' + (loadingReport ? "Analizando..." : "Informe IA Completo") + '</button></div>' +
+      '<div class="ia-divider ia-row-gap"><button type="button" data-sec="alertas">Ver tabla de alertas</button><button type="button" data-sec="topologia">Ver topología</button>' +
+      (snap.equipos.length === 0 ? '<button type="button" id="ia-btn-load-lab" style="border-color:#4da3ff;color:#4da3ff;background:transparent">Cargar laboratorio de ejemplo</button>' : '') +
+      '</div></div>';
+
+    snap.racks.forEach(r => {
+      const conds = getRackConds(r, snap);
+      const sev = conds.some(c => c.sev === "crit") ? "crit" : (conds.some(c => c.sev === "warn") ? "warn" : "ok");
+      const sevTxt = sev === "crit" ? "CRÍTICA" : (sev === "warn" ? "PRECAUCIÓN" : "NORMAL");
+      const pctU = Math.round((r.uOcupadas / r.alturaU) * 100);
+      const pctW = Math.round((r.potenciaW / (r.capacidadW || 3000)) * 100);
+      const eqs = snap.equipos.filter(e => e.rackId === r.id);
+
+      h += '<div class="ia-card sev-' + sev + '"><div class="ia-row-between"><div class="ia-row-gap"><span class="ia-txt-' + sev + '">' + SVG_ICONS[sev] + '</span><strong>' + escHtml(r.nombre) + '</strong><span class="ia-txt-' + sev + '" style="font-size:11px;font-weight:700">' + sevTxt + '</span></div>' +
+        '<div class="ia-row-gap"><button type="button" data-focus-rack="' + escHtml(r.id) + '" data-view="frontal" style="color:#4da3ff;padding:4px 8px;font-size:11px">' + SVG_ICONS.eye + ' Enfocar</button>' +
+        '<button type="button" data-focus-rack="' + escHtml(r.id) + '" data-view="posterior" style="color:#9aa7b4;padding:4px 8px;font-size:11px">Posterior</button>' +
+        '<button type="button" data-rep-rack="' + escHtml(r.id) + '" style="padding:4px 8px;font-size:11px">Informe IA</button></div></div>' +
+        '<div class="ia-telemetry-grid"><div class="ia-telemetry-cell">' + SVG_ICONS.temp + '<span>' + r.tempC.toFixed(1) + '° / Δ' + r.deltaT.toFixed(1) + '°</span></div>' +
+        '<div class="ia-telemetry-cell">' + SVG_ICONS.zap + '<span>' + r.potenciaW + 'W (' + pctW + '%)</span></div>' +
+        '<div class="ia-telemetry-cell">' + SVG_ICONS.cpu + '<span>' + r.uOcupadas + '/' + r.alturaU + 'U (' + pctU + '%)</span></div></div>';
+
+      if (conds.length) {
+        h += '<div class="ia-divider" style="display:flex;flex-direction:column;gap:5px">';
+        conds.forEach(c => {
+          const me = eqs.find(e => c.clave.includes(e.id) || c.origen === e.nombre);
+          h += '<div class="ia-row-between" style="font-size:11.5px"><span class="ia-txt-' + (c.sev === "info" ? "info" : c.sev) + '">' + escHtml(c.msg) + '</span>' +
+            (me ? '<button type="button" class="ia-btn-link" data-focus-eq="' + escHtml(me.id) + '">Ver equipo ↗</button>' : '') + '</div>';
+        });
+        h += '</div>';
+      } else {
+        h += '<div class="ia-divider" style="font-size:11px;color:#9aa7b4">Sin fallas activas · ' + eqs.length + ' dispositivo(s) · Humedad ' + r.humedadPct + '% · Puerta ' + escHtml(r.puerta) + '</div>';
+      }
+      h += '</div>';
+    });
+
+    if (reportError) h += '<div class="ia-card sev-crit ia-txt-crit" style="font-size:12px">' + escHtml(reportError) + '</div>';
+
+    if (currentReport) {
+      h += '<div class="ia-card" style="border-color:rgba(77,163,255,0.55)"><div class="ia-row-between"><strong style="font-size:13.5px">' + escHtml(currentReport.title) + '</strong><span class="ia-txt-' + (currentReport.overallSeverity || "warn") + '" style="font-size:11px;font-weight:700">' + String(currentReport.overallSeverity || "warn").toUpperCase() + '</span></div>' +
+        '<p style="font-size:12px;margin:8px 0 0;line-height:1.45">' + escHtml(currentReport.executiveSummary) + '</p><div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">';
+      (currentReport.racks || []).forEach(rr => {
+        h += '<div class="ia-card-dark"><div class="ia-row-between"><button type="button" class="ia-btn-link" data-focus-rack="' + escHtml(rr.rackId) + '" style="font-size:12.5px;font-weight:700">' + escHtml(rr.rackName) + ' ↗</button><span class="ia-txt-' + (rr.severity || "ok") + '" style="font-size:11px;font-weight:700">' + String(rr.severity || "ok").toUpperCase() + '</span></div>' +
+          '<div style="font-size:11.5px;color:#9aa7b4;margin-top:3px">' + escHtml(rr.headline) + '</div>';
+        (rr.recommendations || []).forEach((rec, i) => {
+          h += '<div class="ia-row-between" style="background:#161b22;border-radius:6px;padding:7px 9px;margin-top:6px"><div style="min-width:0;flex:1"><div style="font-size:11.5px;font-weight:600">' + escHtml(rec.label) + '</div><div style="font-size:11px;color:#9aa7b4">' + escHtml(rec.impact) + '</div></div>' +
+            (rec.suggestedTool ? '<button type="button" data-run-rec="' + escHtml(rr.rackId) + ':' + i + '" style="border-color:#4da3ff;color:#4da3ff;background:transparent;font-size:11px;padding:4px 8px">▶ Aplicar (Política)</button>' : '') + '</div>';
+        });
+        h += '</div>';
+      });
+      h += '</div></div>';
+    }
+
+    body.innerHTML = h;
+    body.querySelector("#ia-btn-full-rep")?.addEventListener("click", () => generateReport());
+    body.querySelector("#ia-btn-load-lab")?.addEventListener("click", () => {
+      const res = processToolCall("load_example_lab", { reason: "Carga desde Informes" });
+      if (res.trace.decision === "QUEUED_APPROVAL") { activeTab = "policies"; policySubTab = "approvals"; }
+      renderDrawer();
+    });
+    body.querySelectorAll("[data-sec]").forEach(btn => btn.addEventListener("click", () => {
+      window.__NOC_BRIDGE__.focusSection(btn.dataset.sec);
+      autoCloseIfMobile();
+    }));
+    body.querySelectorAll("[data-focus-rack]").forEach(btn => btn.addEventListener("click", () => {
+      window.__NOC_BRIDGE__.focusRack(btn.dataset.focusRack, btn.dataset.view);
+      autoCloseIfMobile();
+    }));
+    body.querySelectorAll("[data-focus-eq]").forEach(btn => btn.addEventListener("click", () => {
+      window.__NOC_BRIDGE__.focusEquipment(btn.dataset.focusEq);
+      autoCloseIfMobile();
+    }));
+    body.querySelectorAll("[data-rep-rack]").forEach(btn => btn.addEventListener("click", () => generateReport(btn.dataset.repRack)));
+    body.querySelectorAll("[data-run-rec]").forEach(btn => btn.addEventListener("click", () => {
+      const [rId, idx] = btn.dataset.runRec.split(":");
+      const rec = currentReport?.racks?.find(x => x.rackId === rId)?.recommendations?.[Number(idx)];
+      if (!rec?.suggestedTool) return;
+      let args = {}; try { args = JSON.parse(rec.suggestedArgsJson || "{}"); } catch (_e) {}
+      const out = processToolCall(rec.suggestedTool, args);
+      if (out.trace.decision === "QUEUED_APPROVAL") { activeTab = "policies"; policySubTab = "approvals"; }
+      renderDrawer();
+    }));
+  }
+
+  function renderChatTab(body) {
+    let h = '<div class="ia-chat-wrap"><div class="ia-row-gap">';
+    QUICK_PROMPTS.forEach((q, i) => { h += '<button type="button" data-qp="' + i + '" style="font-size:11px;padding:4px 8px;background:#161b22;color:#9aa7b4">' + escHtml(q) + '</button>'; });
+    h += '</div><div class="ia-chat-log" id="ia-chat-log">';
+    chatMessages.forEach(m => {
+      h += '<div class="ia-msg ' + (m.role === "user" ? "user" : "") + '"><div class="ia-msg-head"><strong>' + (m.role === "user" ? "Tú" : "Agente IA NOC") + '</strong><span class="ia-mono">' + new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + '</span></div>' +
+        '<div class="ia-msg-body">' + escHtml(m.text) + '</div>';
+      if (m.traces?.length) {
+        m.traces.forEach(t => {
+          const decCls = t.decision === "AUTO_ALLOWED" ? "ia-txt-ok" : (t.decision === "QUEUED_APPROVAL" ? "ia-txt-warn" : "ia-txt-crit");
+          const decTxt = t.decision === "AUTO_ALLOWED" ? "EJECUTADO" : (t.decision === "QUEUED_APPROVAL" ? "PENDIENTE ADMIN" : "DENEGADO");
+          const pend = t.requestId ? state.requests.find(r => r.id === t.requestId && r.status === "pending") : null;
+          h += '<div class="ia-trace-box"><div class="ia-row-between"><span class="ia-mono ia-txt-muted">' + escHtml(t.policyKey) + '</span><span class="' + decCls + '" style="font-weight:700">' + decTxt + '</span></div>' +
+            '<div style="margin-top:3px">' + escHtml(t.summary) + '</div>' +
+            (pend ? '<div class="ia-row-gap" style="margin-top:6px"><button type="button" class="ia-btn-ok" data-ap="' + escHtml(pend.id) + '" style="padding:3px 8px;font-size:11px">Aprobar</button><button type="button" class="ia-btn-danger" data-rj="' + escHtml(pend.id) + '" style="padding:3px 8px;font-size:11px">Rechazar</button></div>' : '') +
+            '</div>';
+        });
+      }
+      h += '</div>';
+    });
+    if (sendingChat) h += '<div class="ia-msg ia-txt-muted">Consultando telemetría y evaluando políticas...</div>';
+    h += '</div><form class="ia-chat-form" id="ia-chat-form"><div class="ia-row-gap" style="flex-wrap:nowrap"><input id="ia-chat-input" type="text" placeholder="Pregunta por fallas, racks, o pide un cambio..." style="flex:1"><button type="submit" class="ia-btn-primary" style="padding:8px 12px">Enviar</button></div>' +
+      (chatMessages.length > 1 ? '<button type="button" id="ia-chat-clear" class="ia-btn-ghost" style="align-self:flex-end;font-size:11px">Limpiar conversación</button>' : '') + '</form></div>';
+
+    body.innerHTML = h;
+    const log = body.querySelector("#ia-chat-log");
+    if (log) log.scrollTop = log.scrollHeight;
+    body.querySelectorAll("[data-qp]").forEach(btn => btn.addEventListener("click", () => sendChat(QUICK_PROMPTS[Number(btn.dataset.qp)])));
+    body.querySelector("#ia-chat-form")?.addEventListener("submit", ev => { ev.preventDefault(); sendChat(); });
+    body.querySelector("#ia-chat-clear")?.addEventListener("click", () => { chatMessages = [chatMessages[0]]; renderDrawer(); });
+    body.querySelectorAll("[data-ap]").forEach(btn => btn.addEventListener("click", () => approveRequest(btn.dataset.ap)));
+    body.querySelectorAll("[data-rj]").forEach(btn => btn.addEventListener("click", () => rejectRequest(btn.dataset.rj)));
+  }
+
+  function renderPoliciesTab(body, snap) {
+    const isAdmin = state.policy.role === "admin";
+    const pending = state.requests.filter(r => r.status === "pending");
+    const resolved = state.requests.filter(r => r.status !== "pending").slice(-10).reverse();
+
+    let h = '<div class="ia-card"><div class="ia-row-between"><div class="ia-row-gap">' + (isAdmin ? SVG_ICONS.shieldOk : SVG_ICONS.lock) + '<strong>Sesión: ' + (isAdmin ? "Administrador" : "Operador (restringido)") + '</strong></div>' +
+      (isAdmin ? '<div class="ia-row-gap"><button type="button" id="ia-pin-toggle" style="font-size:11px;padding:4px 8px">PIN Admin</button><button type="button" id="ia-lock-op" style="font-size:11px;padding:4px 8px">Bloquear a Operador</button></div>' : '') + '</div>';
+
+    if (!isAdmin) {
+      h += '<form id="ia-unlock-form" class="ia-row-gap" style="margin-top:10px;flex-wrap:nowrap"><input id="ia-pin-in" type="password" placeholder="PIN Administrador (def. 1234)" style="flex:1"><button type="submit" class="ia-btn-primary">Desbloquear</button></form>';
+    } else if (showPinEdit) {
+      h += '<form id="ia-newpin-form" class="ia-row-gap ia-divider" style="flex-wrap:nowrap"><input id="ia-newpin-in" type="password" placeholder="Nuevo PIN (mín. 4 caracteres)" style="flex:1"><button type="submit" class="ia-btn-primary">Guardar PIN</button></form>';
+    }
+    if (pinError) h += '<div class="ia-txt-crit" style="font-size:11.5px;margin-top:6px">' + escHtml(pinError) + '</div>';
+    h += '<div style="font-size:11.5px;color:#9aa7b4;margin-top:6px">' + (isAdmin ? "Como Administrador puedes aprobar cambios de la IA y definir permisos por tipo de modificación o gabinete." : "Modo Operador activo: no puedes editar políticas ni aprobar modificaciones restringidas.") + '</div></div>';
+
+    h += '<div class="ia-subtabs">' +
+      [["approvals", "Aprobaciones (" + pending.length + ")"], ["rules", "Permisos"], ["racks", "Racks"], ["audit", "Auditoría"]].map(([id, lbl]) =>
+        '<button type="button" class="ia-subtab ' + (policySubTab === id ? "active" : "") + '" data-psub="' + id + '">' + lbl + '</button>'
+      ).join("") + '</div>';
+
+    if (policySubTab === "approvals") {
+      if (!pending.length) {
+        h += '<div class="ia-card ia-txt-muted" style="font-size:12px">No hay solicitudes pendientes de aprobación. Cuando el Agente IA proponga un cambio sujeto a aprobación, aparecerá aquí para tu autorización.</div>';
+      } else {
+        pending.forEach(req => {
+          const rk = RISK_INFO[req.risk] || RISK_INFO.medium;
+          h += '<div class="ia-card"><div class="ia-row-between" style="font-size:11.5px"><span class="ia-mono ia-txt-warn">' + escHtml(req.id) + '</span><span class="' + rk.cls + '">' + rk.text + '</span></div>' +
+            '<div style="font-weight:700;margin-top:4px">' + escHtml(req.summary) + '</div>' +
+            '<div style="font-size:11.5px;color:#9aa7b4;margin-top:3px">Motivo: ' + escHtml(req.reason) + '</div>' +
+            '<div class="ia-row-gap" style="margin-top:10px"><button type="button" class="ia-btn-ok" data-ap="' + escHtml(req.id) + '"' + (!isAdmin ? " disabled" : "") + '>Aprobar y ejecutar</button>' +
+            '<button type="button" class="ia-btn-danger" data-rj="' + escHtml(req.id) + '"' + (!isAdmin ? " disabled" : "") + '>Rechazar</button></div></div>';
+        });
+      }
+      if (resolved.length) {
+        h += '<div class="ia-card"><div class="ia-row-between"><span style="font-size:11.5px;font-weight:700;color:#9aa7b4">Historial reciente</span>' + (isAdmin ? '<button type="button" class="ia-btn-link" id="ia-clear-req">Limpiar resueltas</button>' : '') + '</div>';
+        resolved.forEach(r => {
+          const stCls = r.status === "approved" ? "ia-txt-ok" : (r.status === "rejected" ? "ia-txt-crit" : "ia-txt-warn");
+          const stTxt = r.status === "approved" ? "Ejecutada" : (r.status === "rejected" ? "Rechazada" : "Error");
+          h += '<div class="ia-divider"><div class="ia-row-between" style="font-size:11.5px"><span>' + escHtml(r.summary) + '</span><strong class="' + stCls + '">' + stTxt + '</strong></div>' +
+            (r.executionMessage ? '<div style="font-size:11px;color:#9aa7b4">' + escHtml(r.executionMessage) + '</div>' : '') + '</div>';
+        });
+        h += '</div>';
+      }
+    } else if (policySubTab === "rules") {
+      h += '<div class="ia-card"><div style="font-size:11.5px;font-weight:700;color:#9aa7b4;margin-bottom:6px">Perfiles rápidos de política</div><div class="ia-row-gap">' +
+        Object.entries(POLICY_PRESETS).map(([k, p]) => '<button type="button" data-preset="' + k + '"' + (!isAdmin ? " disabled" : "") + ' style="font-size:11px">' + escHtml(p.label) + '</button>').join("") + '</div></div>';
+      POLICY_CATALOG.forEach(item => {
+        const perm = state.policy.rules[item.key];
+        const rk = RISK_INFO[item.risk];
+        h += '<div class="ia-card"><div style="font-weight:600;font-size:12.5px">' + escHtml(item.label) + '</div><div style="font-size:11.5px;color:#9aa7b4;margin-top:2px">' + escHtml(item.description) + '</div>' +
+          '<div class="' + rk.cls + '" style="font-size:11px;margin-top:3px">' + rk.text + '</div>' +
+          '<div class="ia-seg-group">' +
+          [["auto", "Auto-permitir", "sel-auto"], ["approve", "Aprobar Admin", "sel-approve"], ["deny", "Denegar", "sel-deny"]].map(([val, lbl, cls]) =>
+            '<button type="button" class="ia-seg-btn ' + (perm === val ? cls : "") + '" data-rule="' + item.key + ':' + val + '"' + (!isAdmin ? " disabled" : "") + '>' + lbl + '</button>'
+          ).join("") + '</div></div>';
+      });
+    } else if (policySubTab === "racks") {
+      h += '<p style="font-size:11.5px;color:#9aa7b4;margin:0">Define restricciones específicas por gabinete que prevalecen sobre las reglas generales.</p>';
+      snap.racks.forEach(r => {
+        const cur = state.policy.rackLocks[r.id] || "normal";
+        h += '<div class="ia-card"><div class="ia-row-between"><strong>' + escHtml(r.nombre) + '</strong><span class="ia-mono ia-txt-muted" style="font-size:11px">' + r.uOcupadas + '/' + r.alturaU + ' U · ' + r.potenciaW + ' W</span></div>' +
+          '<div class="ia-seg-group">' +
+          [["normal", "Según política", "sel-accent"], ["require_approval", "Siempre aprobar", "sel-approve"], ["read_only", "Solo lectura", "sel-deny"]].map(([val, lbl, cls]) =>
+            '<button type="button" class="ia-seg-btn ' + (cur === val ? cls : "") + '" data-rlock="' + escHtml(r.id) + ':' + val + '"' + (!isAdmin ? " disabled" : "") + '>' + lbl + '</button>'
+          ).join("") + '</div></div>';
+      });
+    } else if (policySubTab === "audit") {
+      h += '<div class="ia-card"><strong style="font-size:12px">Registro de evaluación de políticas (' + state.audit.length + ')</strong>';
+      if (!state.audit.length) {
+        h += '<div style="font-size:11.5px;color:#9aa7b4;margin-top:6px">Aún no hay decisiones de política registradas.</div>';
+      } else {
+        state.audit.slice().reverse().slice(0, 50).forEach(a => {
+          const dCls = a.decision === "AUTO_ALLOWED" || a.decision === "APPROVED_ADMIN" ? "ia-txt-ok" : (a.decision === "QUEUED_APPROVAL" ? "ia-txt-warn" : "ia-txt-crit");
+          h += '<div class="ia-divider"><div class="ia-row-between" style="font-size:11px"><span class="ia-mono ia-txt-muted">' + new Date(a.timestamp).toLocaleTimeString() + ' · ' + escHtml(a.actor) + '</span><strong class="' + dCls + '">' + escHtml(a.decision) + '</strong></div><div style="font-size:11.5px;margin-top:2px">' + escHtml(a.detail) + '</div></div>';
+        });
+      }
+      h += '</div>';
+    }
+
+    body.innerHTML = h;
+    body.querySelector("#ia-pin-toggle")?.addEventListener("click", () => { showPinEdit = !showPinEdit; pinError = ""; renderDrawer(); });
+    body.querySelector("#ia-lock-op")?.addEventListener("click", () => { state.policy.role = "operator"; showPinEdit = false; savePolicyData(); renderDrawer(); });
+    body.querySelector("#ia-unlock-form")?.addEventListener("submit", ev => {
+      ev.preventDefault();
+      if (body.querySelector("#ia-pin-in").value.trim() === state.policy.adminPin) { state.policy.role = "admin"; pinError = ""; savePolicyData(); renderDrawer(); }
+      else { pinError = "PIN de administrador incorrecto."; renderDrawer(); }
+    });
+    body.querySelector("#ia-newpin-form")?.addEventListener("submit", ev => {
+      ev.preventDefault();
+      const np = body.querySelector("#ia-newpin-in").value.trim();
+      if (np.length < 4) { pinError = "El PIN debe tener al menos 4 caracteres."; renderDrawer(); return; }
+      state.policy.adminPin = np; showPinEdit = false; pinError = ""; savePolicyData(); renderDrawer();
+    });
+    body.querySelectorAll("[data-psub]").forEach(btn => btn.addEventListener("click", () => { policySubTab = btn.dataset.psub; renderDrawer(); }));
+    body.querySelectorAll("[data-ap]").forEach(btn => btn.addEventListener("click", () => approveRequest(btn.dataset.ap)));
+    body.querySelectorAll("[data-rj]").forEach(btn => btn.addEventListener("click", () => rejectRequest(btn.dataset.rj)));
+    body.querySelector("#ia-clear-req")?.addEventListener("click", () => { state.requests = state.requests.filter(r => r.status === "pending"); savePolicyData(); renderDrawer(); });
+    body.querySelectorAll("[data-preset]").forEach(btn => btn.addEventListener("click", () => {
+      if (!isAdmin) return;
+      state.policy.rules = Object.assign({}, POLICY_PRESETS[btn.dataset.preset].rules);
+      savePolicyData(); renderDrawer();
+    }));
+    body.querySelectorAll("[data-rule]").forEach(btn => btn.addEventListener("click", () => {
+      if (!isAdmin) return;
+      const [k, v] = btn.dataset.rule.split(":");
+      state.policy.rules[k] = v;
+      savePolicyData(); renderDrawer();
+    }));
+    body.querySelectorAll("[data-rlock]").forEach(btn => btn.addEventListener("click", () => {
+      if (!isAdmin) return;
+      const [rId, m] = btn.dataset.rlock.split(":");
+      state.policy.rackLocks[rId] = m;
+      savePolicyData(); renderDrawer();
+    }));
+  }
+
+  function renderDrawer() {
+    if (!window.__NOC_BRIDGE__) return;
+    const snap = window.__NOC_BRIDGE__.getSnapshot();
+    const crit = snap.condiciones.filter(c => c.sev === "crit").length;
+    const warn = snap.condiciones.filter(c => c.sev === "warn").length;
+    const pend = state.requests.filter(r => r.status === "pending").length;
+
+    document.getElementById("ia-ico-bot").innerHTML = SVG_ICONS.bot;
+    document.getElementById("ia-fab-ico").innerHTML = SVG_ICONS.sparkles;
+    const fabCrit = document.getElementById("ia-fab-crit");
+    fabCrit.hidden = crit === 0; fabCrit.textContent = crit + " crit";
+    const fabPend = document.getElementById("ia-fab-pend");
+    fabPend.hidden = pend === 0; fabPend.textContent = pend + " aprob.";
+
+    document.getElementById("ia-header-sub").innerHTML =
+      '<span>' + (state.policy.role === "admin" ? "Rol: Admin" : "Rol: Operador") + '</span><span>·</span>' +
+      '<span class="' + (crit ? "ia-txt-crit" : "") + '">' + crit + ' críticas / ' + warn + ' adv.</span><span>·</span>' +
+      '<span class="' + (pend ? "ia-txt-warn" : "") + '">' + pend + ' pend.</span>';
+
+    document.getElementById("ia-tab-policies").textContent = "Políticas" + (pend ? " (" + pend + ")" : "");
+    document.querySelectorAll("[data-ia-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.iaTab === activeTab));
+
+    const body = document.getElementById("ia-body");
+    if (activeTab === "reports") renderReportsTab(body, snap);
+    else if (activeTab === "chat") renderChatTab(body);
+    else renderPoliciesTab(body, snap);
+  }
+
+  document.getElementById("ia-btn-hide").addEventListener("click", () => { drawerOpen = false; syncDrawerVisibility(); });
+  document.getElementById("ia-fab").addEventListener("click", () => { drawerOpen = true; syncDrawerVisibility(); renderDrawer(); });
+  document.getElementById("ia-hdr-toggle")?.addEventListener("click", () => {
+    drawerOpen = !drawerOpen;
+    syncDrawerVisibility();
+    if (drawerOpen) {
+      renderDrawer();
+      document.getElementById("ia-drawer")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   });
+  document.querySelectorAll("[data-ia-tab]").forEach(btn => btn.addEventListener("click", () => { activeTab = btn.dataset.iaTab; renderDrawer(); }));
+  window.addEventListener("noc:updated", () => {
+    const ae = document.activeElement;
+    if (activeTab === "chat" && ae && ae.id === "ia-chat-input") return;
+    renderDrawer();
+  });
+
+  syncDrawerVisibility();
+  renderDrawer();
 })();
-
 </script>
 </body>
 </html>
